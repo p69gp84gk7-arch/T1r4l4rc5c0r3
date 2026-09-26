@@ -278,6 +278,7 @@ function memoriserDemarrage(d) {
     delete copie.brouillon;          // la séance en cours vient du serveur
     delete copie.competition;        // le direct aussi
     delete copie.messages;
+    delete copie.motDePasseDefaut;
     const texte = JSON.stringify({ le: Date.now(), jeton: jeton, donnees: copie });
     if (texte.length > 1500000) return;
     localStorage.setItem(CLE_DEMARRAGE, texte);
@@ -332,6 +333,7 @@ function appliquerDemarrage(d, depuisCache) {
     etat.saison = d.saison;
     etat.identifiant = d.identifiant;
     etat.motDePasseParDefaut = d.motDePasseParDefaut;
+    etat.motDePasseDefaut = d.motDePasseDefaut || '';
 
     document.getElementById('ecranConnexion').style.display = 'none';
     document.getElementById('app').style.display = '';
@@ -358,7 +360,9 @@ function appliquerDemarrage(d, depuisCache) {
     etat.comparaison = null;
     rendreAccueil(d);
     if (d.motDePasseParDefaut && !depuisCache) {
-      notifier('Pensez à changer votre mot de passe dans l’onglet Profil.');
+      // Le lien de l'application est public : un compte resté au mot de passe
+      // de départ serait ouvert à n'importe qui. On le fait changer tout de suite.
+      setTimeout(function () { ouvrirChangementMotDePasse(true); }, 400);
     }
     // Le formulaire n'est pas remis à zéro si l'archer a déjà commencé à régler
     // une partie pendant que le serveur répondait.
@@ -375,6 +379,7 @@ function appliquerDemarrage(d, depuisCache) {
       etat.competitionProposee = d.competition || null;
       reprendreBrouillon(d.brouillon);
       majBandeauDirect();
+      surveillerProposition();
     }
   }
 }
@@ -2798,9 +2803,10 @@ function ouvrirReglages(type) {
   document.getElementById('frSous').textContent = estEnDirect() && !estMaitreDirect()
     ? 'Réglages fixés par le créateur de la mini-compétition'
     : 'À vérifier avant d’ouvrir le carton';
-  document.getElementById('btnValiderReglages').textContent = etat.reglagesValides
-    ? 'Valider les réglages' : 'Valider et ouvrir le carton';
-  document.getElementById('frAnnuler').style.display = etat.reglagesValides ? '' : 'none';
+  document.getElementById('btnValiderReglages').textContent = competition.actif && !estEnDirect()
+    ? 'Valider et lancer en direct'
+    : (etat.reglagesValides ? 'Valider les réglages' : 'Valider et ouvrir le carton');
+  document.getElementById('frAnnuler').textContent = etat.reglagesValides ? 'Annuler' : 'Plus tard';
   document.getElementById('fenetreReglages').hidden = false;
   document.body.classList.add('vv-ouverte');
 }
@@ -2808,6 +2814,8 @@ function ouvrirReglages(type) {
 function fermerReglages() {
   document.getElementById('fenetreReglages').hidden = true;
   document.body.classList.remove('vv-ouverte');
+  // Fermée sans valider : on revient au choix « Régler une partie ».
+  majEtapeSaisie();
 }
 
 /** Contrôle des réglages, puis ouverture du carton. */
@@ -2827,6 +2835,12 @@ function validerReglages() {
   fermerReglages();
   majEtapeSaisie();
   rendreSaisie();
+  // Une mini-compétition part directement en direct : chacun remplit les
+  // cartes depuis son téléphone, sans second bouton à trouver.
+  if (competition.actif && !estEnDirect() && competition.archers.length >= 2) {
+    lancerDirect();
+    return;
+  }
   if (!seanceEnCours()) {
     notifier((competition.actif ? 'Mini-compétition réglée' : 'Partie réglée') + ' · ' + resumeReglagesTexte());
   }
@@ -2836,10 +2850,7 @@ document.getElementById('btnNouvellePartie').addEventListener('click', function 
 document.getElementById('btnNouvelleCompetition').addEventListener('click', function () { ouvrirReglages('competition'); });
 document.getElementById('btnValiderReglages').addEventListener('click', function () { validerReglages(); });
 document.getElementById('frAnnuler').addEventListener('click', function () { fermerReglages(); });
-document.getElementById('frFermer').addEventListener('click', function () {
-  if (etat.reglagesValides) { fermerReglages(); return; }
-  notifier('Validez les réglages pour ouvrir le carton.', true);
-});
+document.getElementById('frFermer').addEventListener('click', function () { fermerReglages(); });
 
 /** Replie les réglages dès la première flèche, une seule fois par séance. */
 function replierReglages() { /* les réglages vivent désormais dans leur fenêtre */ }
@@ -2953,7 +2964,7 @@ function verifierSaisieAutorisee() {
   return false;
 }
 
-document.getElementById('btnDirect').addEventListener('click', function () {
+function lancerDirect() {
   if (!competition.actif) { notifier('Passez d’abord en mini-compétition.', true); return; }
   if (competition.archers.length < 2) { notifier('Choisissez au moins deux archers.', true); return; }
   sauverCarteCourante();
@@ -2983,7 +2994,7 @@ document.getElementById('btnDirect').addEventListener('click', function () {
       ? 'Une mini-compétition est déjà en direct avec ces archers : vous l’avez rejointe.'
       : 'Mini-compétition en direct : les archers peuvent suivre et saisir.');
   });
-});
+}
 
 /** Rejoint la compétition ouverte par l'encadrement. */
 function rejoindreDirect() {
@@ -2996,6 +3007,7 @@ function rejoindreDirect() {
       if (!r.ok || !r.competition || r.competition.statut !== 'En cours') {
         etat.competitionProposee = null;
         majBandeauDirect();
+        if (r && r.competition) { finDirect(r.competition); return; }
         notifier((r && r.message) || 'Cette mini-compétition est terminée.', true);
         return;
       }
@@ -3075,12 +3087,40 @@ function appliquerCompetitionDistante(c) {
 /** Relecture régulière : cinq secondes suffisent au pas de tir. */
 function surveillerCompetition() {
   clearInterval(direct.minuteur);
+  surveillerProposition();
   if (!estEnDirect()) return;
+  let tours = 0;
   direct.minuteur = setInterval(function () {
     if (!estEnDirect() || document.hidden) return;
-    if (!document.getElementById('vueScore').classList.contains('active')) return;
+    // Hors de l'onglet Score, une relecture sur quatre suffit : elle sert
+    // surtout à savoir si la mini-compétition a été clôturée.
+    tours++;
+    if (!document.getElementById('vueScore').classList.contains('active') && tours % 4) return;
     relireCompetition(false).catch(function () { /* réseau : on retentera au tour suivant */ });
   }, 5000);
+}
+
+/**
+ * Bandeau « Mini-compétition en cours » : il doit disparaître dès que la
+ * partie est close, même sur le téléphone d'un archer qui ne l'a pas rejointe.
+ */
+let minuteurProposition = null;
+function surveillerProposition() {
+  clearInterval(minuteurProposition);
+  if (estEnDirect() || !etat.competitionProposee) return;
+  minuteurProposition = setInterval(function () {
+    if (document.hidden || estEnDirect() || !etat.competitionProposee) return;
+    api('apiCompetitionEnCours').then(function (r) {
+      if (!r || !r.ok) return;
+      const avant = etat.competitionProposee && etat.competitionProposee.id;
+      etat.competitionProposee = r.competition || null;
+      if (avant && !etat.competitionProposee) {
+        notifier('La mini-compétition est terminée.');
+      }
+      majBandeauDirect();
+      surveillerProposition();
+    }).catch(function () { /* réseau : on retentera */ });
+  }, 30000);
 }
 
 /**
@@ -3097,14 +3137,12 @@ function relireCompetition(force) {
     if (!r) return false;
     if (!r.ok) { arreterDirect(r.message); return false; }
     if (r.inchange) {
-      if (r.statut !== 'En cours') { arreterDirect('Mini-compétition clôturée.'); return false; }
       direct.majLe = new Date();
       majBandeauDirect();
       return true;
     }
     if (r.competition.statut !== 'En cours') {
-      arreterDirect(r.competition.statut === 'Enregistrée'
-        ? 'Mini-compétition enregistrée.' : 'Mini-compétition abandonnée.');
+      finDirect(r.competition);
       return false;
     }
     appliquerCompetitionDistante(r.competition);
@@ -3280,6 +3318,41 @@ function abandonnerDirect() {
       abandonnerSeance();
     });
   });
+}
+
+/**
+ * La mini-compétition vient d'être close par quelqu'un d'autre : on le dit
+ * clairement, on range le direct et on rafraîchit les scores — la partie de
+ * chacun est déjà enregistrée sur le serveur.
+ */
+function finDirect(c) {
+  const reglages = (c && c.reglages) || {};
+  // Celui qui vient de clôturer a déjà son récapitulatif à l'écran : on ne le
+  // recouvre pas d'un second message.
+  if (reglages.fermeeParId && reglages.fermeeParId === etat.moi.id) {
+    arreterDirect('');
+    return;
+  }
+  const qui = esc(reglages.fermeePar || nomParticipant(c && c.createur) || 'le créateur');
+  const enregistree = c && c.statut === 'Enregistrée';
+  const participe = (c && c.participants || []).some(function (p) { return p.id === etat.moi.id; });
+  arreterDirect('');
+  abandonnerSeance();
+  etat.reglagesValides = false;
+  majEtapeSaisie();
+  if (enregistree) {
+    chargerScores();
+    rafraichirProgression();
+  }
+  modale('<h2>' + (enregistree ? 'Mini-compétition enregistrée' : 'Mini-compétition abandonnée') + '</h2>' +
+    '<p class="muet">' + (enregistree
+      ? 'La partie a été enregistrée par <strong>' + qui + '</strong>.' +
+        (participe ? ' Elle est désormais dans vos scores.' : '')
+      : '<strong>' + qui + '</strong> a abandonné la mini-compétition : rien n’a été enregistré.') +
+    '</p><div class="actions">' +
+    (enregistree && participe
+      ? '<button class="secondaire" onclick="fermerModale();allerA(\'Progression\')">Voir mes scores</button>' : '') +
+    '<button class="principal" onclick="fermerModale()">Quitter</button></div>');
 }
 
 /** Quitter le direct sans y toucher (participant). */
@@ -6070,6 +6143,14 @@ function rendreParametresApp(r) {
     '<div class="actions"><button type="submit" class="principal" id="btnParametres">Enregistrer</button></div>' +
     '<p class="muet" style="margin:10px 0 0">Le nom du club et la saison s’affichent partout ' +
     'à la prochaine ouverture de l’application.</p></form>' +
+    ((r.comptesParDefaut || []).length
+      ? '<div class="titre-section"><h3>Mots de passe</h3></div><div class="carte">' +
+        '<p class="muet" style="margin:0"><strong>' + r.comptesParDefaut.length + ' compte(s)</strong> ' +
+        'utilisent encore le mot de passe de départ (<strong>' + esc(r.motDePasseParDefaut) + '</strong>). ' +
+        'Le lien de l’application étant public, ces comptes sont ouverts à n’importe qui. ' +
+        'L’application demande maintenant à chacun d’en changer à la connexion.<br><br>' +
+        esc(r.comptesParDefaut.join(', ')) + '</p></div>'
+      : '') +
     '<div class="titre-section"><h3>Données du classeur</h3></div><div class="carte">' +
     '<p class="muet" style="margin:0 0 10px">Pour aller vite, l’application garde quelques ' +
     'minutes en mémoire ce qu’elle a lu dans le classeur. Elle l’oublie dès qu’un archer ' +
@@ -6514,14 +6595,23 @@ function copierLien() {
   }
 }
 
-function ouvrirChangementMotDePasse() {
-  modale('<h2>Changer mon mot de passe</h2><form id="formMotDePasse" style="margin-top:14px">' +
+function ouvrirChangementMotDePasse(obligatoire) {
+  modale((obligatoire
+      ? '<h2>Choisissez votre mot de passe</h2>' +
+        '<p class="muet">Votre compte utilise encore le mot de passe de départ, que tout le ' +
+        'monde connaît. Choisissez-en un autre pour que vos scores restent à vous.</p>'
+      : '<h2>Changer mon mot de passe</h2>') +
+    '<form id="formMotDePasse" style="margin-top:14px">' +
     '<div class="champ"><label>Mot de passe actuel</label>' +
-    '<input id="mActuel" type="password" autocomplete="current-password" required></div>' +
+    '<input id="mActuel" type="password" autocomplete="current-password" required' +
+    (obligatoire ? ' value="' + esc(etat.motDePasseDefaut || '') + '"' : '') + '></div>' +
     '<div class="champ"><label>Nouveau mot de passe (4 caractères minimum)</label>' +
     '<input id="mNouveau" type="password" autocomplete="new-password" minlength="4" required></div>' +
     '<div class="actions"><button type="submit" class="principal">Enregistrer</button>' +
-    '<button type="button" class="secondaire" onclick="fermerModale()">Annuler</button></div></form>');
+    (obligatoire
+      ? '<button type="button" class="secondaire" onclick="reporterMotDePasse()">Plus tard</button>'
+      : '<button type="button" class="secondaire" onclick="fermerModale()">Annuler</button>') +
+    '</div></form>');
 
   document.getElementById('formMotDePasse').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -6535,6 +6625,16 @@ function ouvrirChangementMotDePasse() {
       }
     });
   });
+}
+
+/**
+ * « Plus tard » : la demande revient à la prochaine ouverture, et un rappel
+ * reste visible tant que le mot de passe de départ n'a pas changé.
+ */
+function reporterMotDePasse() {
+  fermerModale();
+  notifier('Mot de passe inchangé : n’importe qui peut ouvrir votre compte. ' +
+    'Changez-le dans l’onglet Profil.', true);
 }
 
 /* ---------- Amorçage ---------- */

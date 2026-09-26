@@ -92,6 +92,10 @@ function apiDemarrage(jeton) {
     moi: moi,
     identifiant: ctx.identifiant,
     motDePasseParDefaut: !!(ctx.compte && String(ctx.compte['Mot de passe']) === MOT_DE_PASSE_DEFAUT),
+    // Sert à pré-remplir le champ « mot de passe actuel » de la demande de
+    // changement : c'est celui que tout le club connaît, il n'y a rien à cacher.
+    motDePasseDefaut: (ctx.compte && String(ctx.compte['Mot de passe']) === MOT_DE_PASSE_DEFAUT)
+      ? MOT_DE_PASSE_DEFAUT : '',
     role: ctx.role,
     estAdmin: ctx.estAdmin,
     estEncadrant: ctx.estEncadrant,
@@ -216,6 +220,9 @@ function apiParametres(jeton) {
       return String(r['Statut'] || 'Actif') !== 'Inactif';
     }).length,
     comptes: readTable_(SHEETS.UTILISATEURS).length,
+    comptesParDefaut: readTable_(SHEETS.UTILISATEURS).filter(function (r) {
+      return String(r['Mot de passe']) === MOT_DE_PASSE_DEFAUT;
+    }).map(function (r) { return String(r['Identifiant'] || ''); }),
   };
 }
 

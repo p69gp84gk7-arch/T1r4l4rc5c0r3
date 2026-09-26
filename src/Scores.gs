@@ -578,7 +578,11 @@ function apiEtatCompetition(jeton, id, version) {
   if (!accesCompetition_(ctx, c)) {
     return { ok: false, message: 'Vous ne participez pas à cette mini-compétition.' };
   }
-  if (Number(version) === c.version) return { ok: true, inchange: true, version: c.version, statut: c.statut };
+  // Une compétition close doit toujours être renvoyée en entier : les autres
+  // téléphones ont besoin de savoir qui l'a enregistrée.
+  if (Number(version) === c.version && c.statut === 'En cours') {
+    return { ok: true, inchange: true, version: c.version, statut: c.statut };
+  }
   return { ok: true, competition: c };
 }
 
@@ -774,8 +778,17 @@ function apiFermerCompetition(jeton, id, enregistrer) {
       };
     }
 
+    const marque = function (statut) {
+      const reglages = Object.assign({}, c.reglages, {
+        fermeePar: ctx.nom, fermeeParId: ctx.id, fermeeLe: now_().getTime(),
+      });
+      updateObject_(SHEETS.COMPETITIONS, r._row, {
+        'Statut': statut, 'Réglages': JSON.stringify(reglages), 'Modifié le': now_(),
+      });
+    };
+
     if (!enregistrer) {
-      updateObject_(SHEETS.COMPETITIONS, r._row, { 'Statut': 'Abandonnée', 'Modifié le': now_() });
+      marque('Abandonnée');
       log_('competition_abandonnee', { id: id }, ctx.id);
       return { ok: true, abandonnee: true, message: 'Mini-compétition abandonnée.' };
     }
@@ -794,7 +807,7 @@ function apiFermerCompetition(jeton, id, enregistrer) {
     }).filter(function (a) { return a.fleches.length; });
 
     // Statut posé avant l'écriture des scores : un second appel s'arrête net.
-    updateObject_(SHEETS.COMPETITIONS, r._row, { 'Statut': 'Enregistrée', 'Modifié le': now_() });
+    marque('Enregistrée');
     const resultat = enregistrerCompetition_(ctx, data);
     if (!resultat.ok) {
       updateObject_(SHEETS.COMPETITIONS, r._row, { 'Statut': 'En cours', 'Modifié le': now_() });

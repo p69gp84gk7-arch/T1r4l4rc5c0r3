@@ -111,9 +111,31 @@ L’onglet **`Utilisateurs`** tient un compte par archer :
   fonctionner dès que l’archer change son mot de passe** — ce qui sert aussi de
   bouton d’urgence en cas de téléphone perdu.
 
+- **Changement obligatoire à la première connexion** : tant qu’un compte utilise le
+  mot de passe de départ, l’application ouvre d’office la fenêtre *Choisissez votre mot
+  de passe* (le mot de passe actuel y est déjà rempli). *Plus tard* est possible, mais
+  l’avertissement revient à chaque ouverture. L’administrateur voit la liste des comptes
+  concernés dans *Profil ▸ Paramètres de l’app*.
+
 > Le mot de passe est inscrit **en clair** dans l’onglet `Utilisateurs`, pour que le
 > club puisse le lire et le corriger : réservez l’accès au **classeur** aux
 > responsables — les archers n’ont besoin que de l’URL de l’application.
+
+### Page d’accueil du club (icône et plein écran)
+
+Le dossier contient une page d’accueil (`index.html`, `manifest.json`, `icone/`)
+publiée par **GitHub Pages** :
+<https://p69gp84gk7-arch.github.io/T1r4l4rc5c0r3/>
+
+Elle ouvre l’application dans un cadre plein écran. Deux avantages :
+
+- **l’icône du club** au lieu de l’icône Google quand l’archer ajoute le raccourci à son
+  écran d’accueil (*Partager ▸ Sur l’écran d’accueil*) ;
+- **le bandeau « Cette application a été créée par un utilisateur de Google Apps
+  Script » disparaît**.
+
+L’adresse Apps Script continue de fonctionner : c’est la même application, le même
+compte, les mêmes données. Un lien d’accès direct (`?cle=…`) traverse la page d’accueil.
 
 ### Saisie d’une partie
 
@@ -235,8 +257,10 @@ celles des autres.
 
 ### Mini-compétition
 
-Le bouton **Mini-compétition**, en haut de l’onglet Score, permet de tenir plusieurs
-tableaux de scores dans une même partie :
+Le bouton **Mini-compétition**, sur l’écran d’accueil de l’onglet Score, permet de tenir
+plusieurs tableaux de scores dans une même partie. Depuis la fenêtre de réglages,
+**Valider et lancer en direct** ouvre le carton *et* partage la partie avec les
+téléphones des participants — il n’y a plus de second bouton à trouver :
 
 1. cocher les **participants** ;
 2. régler une fois pour toutes la date, la discipline, la distance, le blason et le
@@ -277,6 +301,10 @@ touche **📡 Passer en direct**. La séance est alors partagée :
   autres) ; s’il les change, tous les reçoivent ;
 - seul **le créateur** (ou l’encadrement) peut **Terminer et enregistrer pour tous**
   (une partie par archer) ou **Abandonner** ; un double enregistrement est impossible ;
+- **à la clôture, tous les téléphones sont prévenus** : le bandeau disparaît et une
+  fenêtre annonce « La partie a été enregistrée par *X* — elle est désormais dans vos
+  scores », avec *Voir mes scores* et *Quitter*. Un archer qui n’avait pas rejoint voit
+  son bandeau « Mini-compétition en cours » s’effacer tout seul ;
 - une réponse du serveur arrivée en retard n’écrase jamais une volée qu’on vient de
   valider.
 - **Une seule compétition par groupe** : si l'un des archers cochés est déjà dans une
