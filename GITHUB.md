@@ -5,7 +5,7 @@ Apps Script, les données dans le classeur Google Sheets, les archers ouvrent le
 lien. GitHub ne sert qu'à **garder l'historique du code** : chaque version est
 conservée, on voit ce qui a changé, et on peut revenir en arrière.
 
-Trois étapes. La première est déjà faite.
+Trois étapes, toutes faites. Ce guide sert de mémo.
 
 ---
 
@@ -53,68 +53,39 @@ La branche locale s'appelle `main`, comme sur GitHub.
 Deux clics, et l'historique est en ligne. Si les modifications ont été faites par
 Claude, le commit est déjà écrit : il ne reste que **Push origin**.
 
-## Étape 3 — Relier le dossier à Apps Script (fini le copier-coller)
+## Étape 3 — Le lien avec Apps Script ✅ (fait)
 
-L'outil s'appelle **clasp**, il est fourni par Google. Il envoie les fichiers de `src/`
-vers votre projet Apps Script, et sait aussi les récupérer.
+L'outil **clasp**, fourni par Google, envoie les fichiers de `src/` vers le projet Apps
+Script. Tout est en place :
 
-### 3.1 Autoriser l'API Apps Script (une fois)
+- l'API Apps Script est activée, la connexion est faite (compte `cassous31@gmail.com`) ;
+- `.clasp.json` désigne le projet et le dossier `src/` ;
+- le manifeste `src/appsscript.json` reprend les réglages de l'application web
+  (`executeAs: USER_DEPLOYING`, `access: ANYONE_ANONYMOUS`). **Ne les retirez jamais** :
+  ce sont eux qui laissent les archers ouvrir le lien.
 
-Ouvrez <https://script.google.com/home/usersettings> et mettez
-**API Google Apps Script** sur **Activé**.
-
-### 3.2 Se connecter (une fois)
-
-```bash
-cd ~/Library/Mobile\ Documents/com~apple~CloudDocs/Tir\ à\ l\'arc
-npx --yes @google/clasp@3 login
-```
-
-Une page Google s'ouvre : autorisez avec le compte **propriétaire du projet Apps
-Script**. Cela crée un fichier `.clasprc.json` dans votre dossier personnel — il est
-déjà exclu du dépôt, ne le publiez jamais.
-
-### 3.3 Indiquer le projet
-
-Il faut l'**ID du script** : dans l'éditeur Apps Script, *Paramètres du projet ▸ ID du
-script* (ou dans l'adresse `.../projects/`**ID**`/edit`).
-
-Créez le fichier `.clasp.json` à la racine du dossier :
-
-```json
-{ "scriptId": "COLLEZ_ICI_L_ID_DU_SCRIPT", "rootDir": "src" }
-```
-
-### 3.4 Comparer avant d'envoyer (important une seule fois)
-
-`clasp push` **remplace** le code en ligne par celui de `src/`. Avant le premier envoi,
-on vérifie qu'ils sont bien identiques :
-
-```bash
-cd ~/Desktop && mkdir verif && cd verif
-npx --yes @google/clasp@3 clone COLLEZ_ICI_L_ID_DU_SCRIPT
-diff -r . ~/Library/Mobile\ Documents/com~apple~CloudDocs/Tir\ à\ l\'arc/src
-```
-
-- Aucune différence affichée : tout est bon, passez à la suite.
-- Des différences : dites-le-moi, on regarde ensemble laquelle des deux versions garder.
-
-Faites aussi une **version de sécurité** dans l'éditeur Apps Script
-(*Déployer ▸ Gérer les déploiements*), pour pouvoir revenir en arrière côté Google.
-
-### 3.5 La routine, ensuite
+### La routine
 
 ```bash
 cd ~/Library/Mobile\ Documents/com~apple~CloudDocs/Tir\ à\ l\'arc
+npx --yes @google/clasp@3 status    # ce qui serait envoyé
 npx --yes @google/clasp@3 push      # envoie src/ vers Apps Script
+npx --yes @google/clasp@3 pull      # récupère ce qui a été modifié en ligne
 ```
 
-Puis, dans l'éditeur Apps Script : **Déployer ▸ Gérer les déploiements ▸ Modifier ▸
-Nouvelle version**, comme aujourd'hui. Et côté historique : *Commit* + *Push* dans
-GitHub Desktop.
+Un envoi met à jour le **code en cours d'édition**, pas la version déployée : les
+archers continuent d'utiliser la version déployée. Pour qu'ils reçoivent les
+modifications, il faut toujours, dans l'éditeur Apps Script :
+**Déployer ▸ Gérer les déploiements ▸ ✏️ ▸ Version : Nouvelle version ▸ Déployer**.
 
-`npx clasp status` liste ce qui serait envoyé, `npx clasp pull` récupère ce qui a été
-modifié directement dans l'éditeur en ligne.
+Puis, côté historique : *Commit* et *Push origin* dans GitHub Desktop.
+
+### Vérifier avant d'envoyer, en cas de doute
+
+Si vous avez modifié quelque chose directement dans l'éditeur en ligne, récupérez-le
+d'abord (`pull`) — sinon l'envoi l'écrase. `clasp pull` écrit les fichiers serveur avec
+l'extension `.js` alors que le dossier utilise `.gs` : comparez `Auth.js` avec
+`src/Auth.gs`, et ainsi de suite.
 
 ---
 
