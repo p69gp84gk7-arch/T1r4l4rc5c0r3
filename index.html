@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Arc Club Luchonnais</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <!-- C'est cette page qu'iOS interroge pour l'icône du raccourci : elle doit
+       donc déclarer elle-même l'apple-touch-icon, ce que la page de Google ne
+       fait pas. -->
+  <link rel="apple-touch-icon" href="icone-180.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icone-512.png">
+  <link rel="icon" type="image/png" href="icone-512.png">
+  <link rel="manifest" href="manifest.json">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Arc Club">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#15594a">
+
+  <style>
+    html, body { margin: 0; height: 100%; background: #15594a; overflow: hidden; }
+
+    /* Le cadre occupe tout l'écran et reçoit seul les appuis. */
+    iframe {
+      border: 0; width: 100%; height: 100%; display: block;
+      background: #f4f3ef; position: relative; z-index: 1;
+    }
+
+    /* Filet de sécurité : masqué tant que l'application se charge normalement,
+       il ne doit jamais recouvrir le cadre — sinon il avale les appuis et les
+       champs de saisie deviennent inertes. */
+    .secours {
+      position: fixed; inset: 0; z-index: 2; display: none;
+      align-items: center; justify-content: center; padding: 24px;
+      text-align: center; color: #fff; background: #15594a;
+      font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .secours.visible { display: flex; }
+    .secours a { color: #fff; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <iframe id="app" title="Espace archers" allow="clipboard-write"></iframe>
+
+  <div class="secours" id="secours">
+    <p>L’application met du temps à répondre.<br>
+      <a id="lienDirect" href="#">L’ouvrir directement</a></p>
+  </div>
+
+  <script>
+    // ⬇ Remplacer par l'URL /exec de VOTRE déploiement Apps Script.
+    var APPLICATION = 'https://script.google.com/macros/s/AKfycbyqRoX7RZV70caSdqwOw3iVkLtzwp0O7CTmN5OZbkZvtXoYrZcWShqwTL68bssyXw5PUw/exec';
+
+    // La clé d'accès direct doit traverser l'enrobage : sans cela, le raccourci
+    // rouvrirait l'écran de connexion à chaque fois.
+    var adresse = APPLICATION + (location.search || '');
+    var cadre = document.getElementById('app');
+    var secours = document.getElementById('secours');
+
+    document.getElementById('lienDirect').href = adresse;
+    cadre.src = adresse;
+
+    var chargee = false;
+    cadre.addEventListener('load', function () { chargee = true; });
+
+    // Le secours n'apparaît que si le cadre n'a rien affiché au bout de 12 s.
+    setTimeout(function () {
+      if (!chargee) secours.classList.add('visible');
+    }, 12000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+# Ce qui ne part PAS vers Apps Script (tout le reste de src/ est envoyé).
+**/.git/**
+**/node_modules/**
+**/.DS_Store

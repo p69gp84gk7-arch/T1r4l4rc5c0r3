@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <base target="_top">
+  <?!= lienIcone() ?>
+  <?!= include('Styles'); ?>
+  <?!= include('Logo'); ?>
+  <?!= jetonInitial ?>
+</head>
+<body>
+
+<!-- Jeu d'icônes : tracé unique, réutilisé via <use>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="tr-icone" fill="none" stroke="currentColor" stroke-width="1.7"
+       stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+  <symbol id="ico-accueil" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 10.6 12 3.5l9 7.1"/><path d="M5.4 9.4V20h13.2V9.4"/><path d="M9.8 20v-5.2h4.4V20"/>
+  </symbol>
+  <symbol id="ico-inscrits" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9.2" cy="8.4" r="3.3"/><path d="M3.4 19.4c0-3.1 2.6-5 5.8-5s5.8 1.9 5.8 5"/>
+    <path d="M16.4 5.6a3 3 0 0 1 0 5.7"/><path d="M17.6 14.8c2 .6 3.1 2 3.1 4.2"/>
+  </symbol>
+  <symbol id="ico-score" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.3"/><circle cx="12" cy="12" r="4.6"/>
+    <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="ico-progression" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.6 4v16h16.8"/><path d="M7 15.2l3.6-3.9 3 2.7 5-6"/>
+  </symbol>
+  <symbol id="ico-profil" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="8.4" r="3.7"/><path d="M4.6 20c0-3.7 3.3-5.7 7.4-5.7s7.4 2 7.4 5.7"/>
+  </symbol>
+  <symbol id="ico-quitter" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.5 4.5h3.6c.8 0 1.4.6 1.4 1.4v12.2c0 .8-.6 1.4-1.4 1.4h-3.6"/>
+    <path d="M9.6 8.2 5.8 12l3.8 3.8"/><path d="M5.8 12h8.2"/>
+  </symbol>
+  <symbol id="ico-alerte" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4.2 21 19.6H3z"/><path d="M12 10.2v3.9"/><path d="M12 16.8h.01"/>
+  </symbol>
+  <symbol id="ico-bloque" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.4"/><path d="M12 7.6v5"/><path d="M12 16.2h.01"/>
+  </symbol>
+  <symbol id="ico-calendrier" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.4"/>
+    <path d="M3.4 10.2h17.2"/><path d="M8.2 3.4v3.4"/><path d="M15.8 3.4v3.4"/>
+    <path d="M8 14h2"/><path d="M14 14h2"/>
+  </symbol>
+  <symbol id="ico-messages" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20.6 13.4c0 3.2-2.9 5.8-6.6 5.8-1 0-2-.2-2.8-.5l-4.4 1.5 1.3-3.6c-1-1-1.5-2.3-1.5-3.7 0-3.2 3-5.8 6.6-5.8s7.4 2.6 7.4 5.8z"/>
+  </symbol>
+  <symbol id="ico-appareil" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3.6 8.4h3.2l1.6-2.4h7.2l1.6 2.4h3.2v10.2H3.6z"/>
+    <circle cx="12" cy="13" r="3.4"/>
+  </symbol>
+  <symbol id="ico-document" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13.6 3.6H7a1.8 1.8 0 0 0-1.8 1.8v13.2A1.8 1.8 0 0 0 7 20.4h10a1.8 1.8 0 0 0 1.8-1.8V8.8z"/>
+    <path d="M13.6 3.6v5.2h5.2"/><path d="M8.6 13.4h6.8"/><path d="M8.6 16.6h4.4"/>
+  </symbol>
+  <symbol id="ico-etoile" viewBox="0 0 24 24">
+    <path d="M12 3.2l2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.6l6-.9z"
+          fill="#e3b23c" stroke="#c1912f" stroke-width="1" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="ico-valide" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.4"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/>
+  </symbol>
+</svg>
+
+<!-- ============ Chargement ============ -->
+<section id="ecranChargement" class="connexion" style="display:none" aria-live="polite">
+  <div class="logo-carte"><img id="logoChargement" alt=""></div>
+  <h1><?= nomClub() ?></h1>
+  <div class="chargement">Ouverture de votre espace…</div>
+</section>
+
+<!-- ============ Connexion ============ -->
+<section id="ecranConnexion" class="connexion">
+  <div class="logo-carte"><img id="logoConnexion" alt="<?= nomClub() ?>"></div>
+  <h1><?= nomClub() ?></h1>
+  <p class="muet">Espace archers — saison <?= saisonAffichee() ?></p>
+
+  <form id="formConnexion" class="carte" style="margin-top:22px">
+    <div class="champ">
+      <label for="identifiant">Identifiant</label>
+      <input id="identifiant" name="identifiant" autocomplete="username"
+             autocapitalize="off" spellcheck="false" placeholder="NOMPrénom — ex. DUPONTMarie" required>
+    </div>
+    <div class="champ">
+      <label for="motdepasse">Mot de passe</label>
+      <input id="motdepasse" name="motdepasse" type="password" autocomplete="current-password" required>
+    </div>
+    <label style="display:flex;align-items:center;gap:9px;margin:0 0 14px;font-size:13.5px;
+                  font-weight:500;color:var(--encre)">
+      <input type="checkbox" id="resterConnecte" style="width:auto;margin:0">
+      Rester connecté sur cet appareil
+    </label>
+    <p class="muet" style="margin:-6px 0 14px;font-size:12.5px">
+      Pour ne plus rien saisir depuis un raccourci, créez votre lien d’accès direct
+      dans l’onglet Profil une fois connecté.
+    </p>
+    <button type="submit" class="principal" id="btnConnexion">Se connecter</button>
+  </form>
+</section>
+
+<!-- ============ Application ============ -->
+<div id="app" style="display:none">
+  <header class="app">
+    <span class="logo-tuile"><img id="logoEntete" alt=""></span>
+    <div class="titres">
+      <h1 id="enteteTitre"><?= nomClub() ?></h1>
+      <div class="sous" id="enteteSous">Saison <?= saisonAffichee() ?></div>
+    </div>
+
+    <nav class="onglets">
+      <button data-vue="Accueil" class="actif">
+        <svg viewBox="0 0 24 24"><use href="#ico-accueil"/></svg>Accueil
+      </button>
+      <button data-vue="Inscrits">
+        <svg viewBox="0 0 24 24"><use href="#ico-inscrits"/></svg>Inscrits
+      </button>
+      <button data-vue="Score">
+        <svg viewBox="0 0 24 24"><use href="#ico-score"/></svg>Score
+      </button>
+      <button data-vue="Progression">
+        <svg viewBox="0 0 24 24"><use href="#ico-progression"/></svg>Progression
+      </button>
+      <button data-vue="Calendrier">
+        <svg viewBox="0 0 24 24"><use href="#ico-calendrier"/></svg>Calendrier
+      </button>
+      <button data-vue="Messages">
+        <svg viewBox="0 0 24 24"><use href="#ico-messages"/></svg>Messages
+        <span class="pastille-nb" id="badgeMessages" hidden></span>
+      </button>
+      <button data-vue="Profil">
+        <svg viewBox="0 0 24 24"><use href="#ico-profil"/></svg>Profil
+      </button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ---- Accueil ---- -->
+    <section id="vueAccueil" class="vue active">
+      <div id="accueilContenu" class="chargement">Chargement…</div>
+    </section>
+
+    <!-- ---- Inscrits ---- -->
+    <section id="vueInscrits" class="vue">
+      <div class="recherche">
+        <input id="rechercheInscrits" type="search" placeholder="Rechercher un archer…" autocomplete="off">
+      </div>
+      <div id="filtresInscrits" class="carte compacte" style="display:none">
+        <div class="duo">
+          <div>
+            <label for="filtreCategorie">Catégorie</label>
+            <select id="filtreCategorie"><option value="">Toutes</option></select>
+          </div>
+          <div>
+            <label for="filtreArme">Arme</label>
+            <select id="filtreArme"><option value="">Toutes</option></select>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;margin:12px 0 0;font-size:13.5px">
+          <input type="checkbox" id="filtreInactifs" style="width:auto;margin:0"> Afficher aussi les archers archivés
+        </label>
+      </div>
+      <div id="listeInscrits" class="carte"><div class="chargement">Chargement…</div></div>
+      <button id="btnNouvelInscrit" class="principal" style="display:none;margin-top:12px">+ Ajouter un inscrit</button>
+    </section>
+
+    <!-- ---- Saisie d'une partie ---- -->
+    <section id="vueScore" class="vue">
+
+      <div id="bandeauDirect" class="bandeau-direct" style="display:none"></div>
+      <div class="titre-section"><h2 id="titreSaisie">Nouvelle partie</h2></div>
+      <form id="formScore" class="carte">
+
+
+        <!-- Réglages : une fenêtre à part. Le carton ne s'ouvre qu'une fois
+             les réglages validés, avec leur récapitulatif sous les yeux. -->
+        <div id="demarrerPartie" class="demarrer-partie" hidden>
+          <h3>Prêt à tirer ?</h3>
+          <p class="muet">Réglez d'abord la partie — date, discipline, distance, blason, volées.
+            Le carton s'ouvre ensuite, avec le récapitulatif sous les yeux.</p>
+          <div class="actions">
+            <button type="button" class="principal" id="btnNouvellePartie">🎯 Régler une partie</button>
+            <button type="button" class="secondaire" id="btnNouvelleCompetition" style="display:none">👥 Mini-compétition</button>
+          </div>
+        </div>
+
+        <div id="recapReglages" class="recap-reglages" hidden></div>
+
+        <div id="fenetreReglages" class="fenetre-reglages" hidden>
+          <div class="fr-entete">
+            <div class="fr-titres"><strong id="frTitre">Réglages de la partie</strong>
+              <span class="muet" id="frSous">À vérifier avant d'ouvrir le carton</span></div>
+            <button type="button" class="vv-fermer" id="frFermer" title="Fermer">✕</button>
+          </div>
+          <div class="fr-corps">
+            <div class="segment" id="typeSaisie" style="display:none">
+        <button type="button" class="actif" data-type="partie">Une partie</button>
+        <button type="button" data-type="competition">Mini-compétition</button>
+      </div>
+        <div class="champ" id="champArcher" style="display:none">
+          <label for="scoreArcher">Archer</label>
+          <select id="scoreArcher"></select>
+        </div>
+        <div id="blocParticipants" style="display:none">
+          <label>Participants</label>
+          <div class="participants" id="participants"></div>
+          <p class="muet" id="indiceParticipants" style="margin:8px 0 0">
+            Cochez les archers qui participent : chacun aura son tableau de scores.
+          </p>
+          <div class="actions" id="actionsDirect">
+            <button type="button" class="secondaire" id="btnDirect">📡 Passer en direct</button>
+          </div>
+        </div>
+<div class="duo">
+          <div class="champ">
+            <label for="scoreDate">Date</label>
+            <input id="scoreDate" type="date" required>
+          </div>
+          <div class="champ">
+            <label for="scoreContexte">Moment</label>
+            <select id="scoreContexte"></select>
+          </div>
+        </div>
+        <div class="champ">
+          <label for="scoreSeance">Nom de la séance</label>
+          <input id="scoreSeance" placeholder="Ex. Mardi soir, sélection club, 2e départ…">
+        </div>
+        <div class="champ">
+          <label for="scoreDiscipline">Discipline</label>
+          <select id="scoreDiscipline" required></select>
+        </div>
+        <div class="duo">
+          <div class="champ">
+            <label for="scoreDistance">Distance</label>
+            <select id="scoreDistance"></select>
+          </div>
+          <div class="champ">
+            <label for="scoreBlason">Blason</label>
+            <select id="scoreBlason"></select>
+          </div>
+        </div>
+        <div class="duo">
+          <div class="champ">
+            <label for="scoreVolees">Nb de volées</label>
+            <select id="scoreVolees" required></select>
+          </div>
+          <div class="champ">
+            <label for="scoreParVolee">Flèches par volée</label>
+            <select id="scoreParVolee"></select>
+          </div>
+        </div>
+        <div class="champ" style="margin-top:13px">
+          <label for="scoreLieu">Lieu</label>
+          <input id="scoreLieu" placeholder="Gymnase, terrain, club visité…">
+        </div>
+        <div class="segment" id="modeSaisie">
+          <button type="button" class="actif" data-mode="cible">Sur la cible</button>
+          <button type="button" data-mode="clavier">Au clavier</button>
+          <button type="button" data-mode="global">Score global</button>
+        </div>
+          </div>
+          <div class="fr-actions">
+            <button type="button" class="secondaire" id="frAnnuler">Annuler</button>
+            <button type="button" class="principal" id="btnValiderReglages">Valider et ouvrir le carton</button>
+          </div>
+        </div>
+
+
+        <div class="onglets-archers" id="ongletsArchers" style="display:none"></div>
+
+        <div id="blocSaisie">
+          <div class="recap-saisie">
+            <div class="points"><span id="recapScore">0</span><span class="muet" id="recapMax">/0</span>
+              <span class="muet" id="recapPourcent"></span></div>
+            <div class="muet" id="recapAvancement">0 flèche saisie</div>
+          </div>
+
+          <div class="cible-bloc" id="blocCible">
+            <div class="loupe" id="loupe" style="display:none"></div>
+            <svg class="cible" id="cible" viewBox="-22 -22 44 44"></svg>
+            <div class="cible-indice" id="cibleIndice">
+              Touchez la cible et faites glisser : la loupe montre où la flèche se pose.
+            </div>
+          </div>
+
+          <div id="volees"></div>
+
+          <div class="clavier" id="clavier"></div>
+          <div class="actions" style="margin-top:8px">
+            <button type="button" class="secondaire" id="btnAnnulerAction" disabled title="Revenir à l’état précédent">↶ Revenir</button>
+            <button type="button" class="danger-doux" id="btnEffacerFleche" style="display:none">← Effacer la flèche</button>
+            <button type="button" class="danger" id="btnViderFleches">Tout vider</button>
+          </div>
+        </div>
+
+        <div id="blocGlobal" style="display:none">
+          <div class="champ">
+            <label for="scorePoints">Score total <span id="scoreMaxIndice" class="muet"></span></label>
+            <input id="scorePoints" type="number" min="0" inputmode="numeric">
+          </div>
+        </div>
+
+        <div id="classementDirect" style="display:none"></div>
+
+        <button type="submit" class="principal" id="btnScore">Enregistrer la partie</button>
+      </form>
+
+      <div class="titre-section"><h2 id="titreListeScores">Dernières parties</h2>
+        <span class="muet" id="scoresTotal"></span></div>
+      <div class="segment" id="porteeScores" style="display:none">
+        <button type="button" class="actif" data-portee="moi">Mes parties</button>
+        <button type="button" data-portee="club">Tout le club</button>
+      </div>
+      <div id="listeScores" class="carte"><div class="chargement">Chargement…</div></div>
+    </section>
+
+    <!-- ---- Progression et statistiques ---- -->
+    <section id="vueProgression" class="vue">
+      <div class="segment" id="sousOnglets">
+        <button type="button" class="actif" data-sous="Progression">Progression</button>
+        <button type="button" data-sous="Stats">Statistiques</button>
+        <button type="button" data-sous="Comparer" id="ongletComparer" style="display:none">Comparer</button>
+        <button type="button" data-sous="Classement">Classement</button>
+      </div>
+      <div id="progressionContenu" class="chargement">Chargement…</div>
+      <div id="statsContenu" style="display:none"></div>
+      <div id="comparaisonContenu" style="display:none"></div>
+      <div id="classementContenu" style="display:none"></div>
+    </section>
+
+    <!-- ---- Calendrier ---- -->
+    <section id="vueCalendrier" class="vue">
+      <div id="recapCalendrier"></div>
+      <div class="titre-section"><h2>Séances à venir</h2>
+        <span class="muet" id="calendrierJours"></span></div>
+      <div id="calendrierContenu" class="chargement">Chargement…</div>
+    </section>
+
+    <!-- ---- Messagerie ---- -->
+    <section id="vueMessages" class="vue">
+      <form id="formMessage" class="carte">
+        <div class="champ" id="champDestinataire" style="display:none">
+          <label for="messageDestinataire">Destinataire</label>
+          <select id="messageDestinataire"></select>
+        </div>
+        <div class="champ">
+          <label for="messageTexte">Nouveau message</label>
+          <textarea id="messageTexte" maxlength="2000"
+                    placeholder="Un mot pour le club…"></textarea>
+        </div>
+        <button type="submit" class="principal" id="btnMessage">Publier</button>
+      </form>
+      <div id="messagesContenu" class="chargement">Chargement…</div>
+    </section>
+
+    <!-- ---- Profil ---- -->
+    <section id="vueProfil" class="vue">
+      <div id="profilContenu" class="chargement">Chargement…</div>
+    </section>
+  </main>
+
+</div>
+
+<!-- Saisie d'une volée : vue à part, que le rafraîchissement du direct ne touche pas. -->
+<div class="vue-volee" id="vueVolee" hidden>
+  <div class="vv-entete">
+    <button type="button" class="vv-fermer" id="vvFermer" aria-label="Fermer">✕</button>
+    <div class="vv-titres"><strong id="vvTitre">Volée</strong><span class="muet" id="vvSous"></span></div>
+    <div class="vv-total" id="vvTotal"></div>
+  </div>
+  <div class="vv-cases" id="vvCases"></div>
+  <div class="vv-mesures" id="vvMesures"></div>
+  <div class="vv-cible" id="vvCibleBloc">
+    <div class="loupe" id="vvLoupe" style="display:none"></div>
+    <svg class="cible" id="vvCible" viewBox="-22 -22 44 44"></svg>
+    <div class="cible-indice" id="vvIndice"></div>
+  </div>
+  <div class="clavier" id="vvClavier" style="display:none"></div>
+  <div class="vv-actions">
+    <button type="button" class="secondaire" id="vvEffacer">← Effacer</button>
+    <button type="button" class="principal" id="vvValider">Valider la volée</button>
+  </div>
+</div>
+
+<div class="modale" id="modale">
+  <div class="contenu">
+    <div class="poignee"></div>
+    <div id="modaleContenu"></div>
+  </div>
+</div>
+
+<div id="message"></div>
+
+<?!= include('JavaScript'); ?>
+</body>
+</html>

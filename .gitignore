@@ -1,0 +1,17 @@
+# Identifiants clasp : ne JAMAIS les publier
+.clasprc.json
+**/.clasprc.json
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Fichiers de travail
+*.tmp
+*.bak
