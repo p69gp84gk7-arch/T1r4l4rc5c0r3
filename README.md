@@ -362,6 +362,26 @@ Le bouton **Paramètres de l’app ›** ouvre, dans l'application :
 - une alerte si le dernier déploiement n'est pas l'adresse diffusée ;
 - tous les **réglages de l'onglet Paramètres**, modifiables sur place (listes pour
   les choix fermés comme *Scores visibles par tous*).
+- **Relire le classeur maintenant** : voir *Vitesse* ci-dessous.
+
+### Vitesse
+
+Trois mécanismes, invisibles à l'usage :
+
+1. **Ouverture immédiate.** Le téléphone garde la dernière réponse du serveur et
+   affiche l'application aussitôt, puis se met à jour en fond. La séance en cours, la
+   mini-compétition en direct et les messages ne sont jamais pris de cette mémoire :
+   ils viennent toujours du serveur.
+2. **Cache des lectures.** Les onglets lus à chaque appel — Inscrits, Utilisateurs,
+   Paramètres, Scores, Disponibilités, Messages — sont gardés **cinq minutes** dans le
+   cache du script, et oubliés **dès qu'une écriture les touche**. L'onglet des
+   mini-compétitions en direct n'est jamais mis en cache.
+3. **Calculs mémorisés.** Statistiques d'un archer, progression et classement du club
+   sont conservés tant qu'aucune partie n'a été enregistrée, modifiée ou supprimée.
+
+Une modification faite **directement dans le classeur** ne prévient pas l'application :
+elle apparaît au bout de cinq minutes, ou tout de suite avec le bouton **Relire le
+classeur maintenant** (*Profil ▸ Paramètres de l'app*).
 
 ### Photo de profil et licence
 

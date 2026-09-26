@@ -215,5 +215,89 @@ verifie('le lien d’accès direct reste valable', (ctx.lireJeton_(lienAn) || {}
 vm.runInContext("motDePasseCourant = 'nouveau-mdp';", ctx);
 verifie('changer de mot de passe invalide les liens', ctx.lireJeton_(lienAn), null);
 
+// --- Cache partagé entre les appels ---
+// Contexte neuf : les tests précédents ont remplacé readTable_ par un bouchon.
+const ctxCache = { console };
+vm.createContext(ctxCache);
+['Config.gs', 'Data.gs'].forEach(function (f) {
+  vm.runInContext(fs.readFileSync(dir + '/' + f, 'utf8'), ctxCache, { filename: f });
+});
+vm.runInContext(`
+  var _faussesEntrees = {};
+  var _ouvertures = 0;
+  CacheService = { getScriptCache: function () { return {
+    get: function (c) { return _faussesEntrees[c] === undefined ? null : _faussesEntrees[c]; },
+    getAll: function (cles) {
+      var out = {};
+      cles.forEach(function (c) { if (_faussesEntrees[c] !== undefined) out[c] = _faussesEntrees[c]; });
+      return out;
+    },
+    putAll: function (paquet) {
+      Object.keys(paquet).forEach(function (c) {
+        if (String(paquet[c]).length > 100000) throw new Error('entrée de cache trop grosse');
+        _faussesEntrees[c] = paquet[c];
+      });
+    },
+  }; } };
+  var _proprietes = {};
+  PropertiesService = { getScriptProperties: function () { return {
+    getProperties: function () { return JSON.parse(JSON.stringify(_proprietes)); },
+    setProperty: function (c, v) { _proprietes[c] = v; },
+    getProperty: function (c) { return _proprietes[c] || null; },
+  }; } };
+  Utilities = { formatDate: function (d) {
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  } };
+  ss_ = function () { return { getSpreadsheetTimeZone: function () { return 'Europe/Paris'; } }; };
+  // Un onglet de 400 parties, avec de vraies dates et de longues colonnes.
+  var _lignes = [];
+  for (var i = 0; i < 400; i++) {
+    _lignes.push({ _row: i + 2, 'ID': 'SCO' + i, 'Date': new Date(2026, 0, 1 + (i % 300)),
+      'Score': 250 + (i % 50), 'Impacts (cm)': new Array(40).join('1.5:2.5,') });
+  }
+  lireOnglet_ = function () { _ouvertures++; return _lignes; };
+`, ctxCache);
+
+const lu1 = ctxCache.readTable_('Scores');
+ctxCache.readTable_('Scores');
+verifie('lecture d’un onglet de 400 parties', lu1.length, 400);
+verifie('une seule ouverture du classeur par exécution', vm.runInContext('_ouvertures', ctxCache), 1);
+
+// Appel suivant : la mémoire d'exécution est vide, le cache partagé prend le relais.
+vm.runInContext('_tables = {};', ctxCache);
+const lu3 = ctxCache.readTable_('Scores');
+verifie('le cache évite de rouvrir le classeur', vm.runInContext('_ouvertures', ctxCache), 1);
+verifie('contenu complet relu du cache', lu3.length, 400);
+verifie('les dates restent des dates',
+  Object.prototype.toString.call(lu3[5]['Date']), '[object Date]');
+verifie('date identique à l’originale',
+  ctxCache.isoDate_(lu3[5]['Date']), ctxCache.isoDate_(lu1[5]['Date']));
+verifie('gros onglet découpé en morceaux de moins de 100 Ko',
+  Object.keys(vm.runInContext('_faussesEntrees', ctxCache)).length > 2, true);
+
+// Une écriture change la version : le cache précédent n'est plus servi.
+ctxCache.oublierTables_('Scores');
+const lu4 = ctxCache.readTable_('Scores');
+verifie('après écriture, le classeur est relu', vm.runInContext('_ouvertures', ctxCache), 2);
+verifie('contenu toujours complet', lu4.length, 400);
+
+// Résultat de calcul mémorisé, invalidé par une écriture.
+let calculs = 0;
+const calcul = function () { calculs++; return { total: 42 }; };
+const r1 = ctxCache.memoCalcul_('test', ['Scores'], calcul);
+const r2 = ctxCache.memoCalcul_('test', ['Scores'], calcul);
+verifie('calcul mémorisé : une seule exécution', [calculs, r1.total, r2.total], [1, 42, 42]);
+ctxCache.oublierTables_('Scores');
+ctxCache.memoCalcul_('test', ['Scores'], calcul);
+verifie('un score enregistré refait le calcul', calculs, 2);
+
+// Un onglet vivant (mini-compétition en direct) n'est jamais mis en cache.
+vm.runInContext('_tables = {}; _ouvertures = 0;', ctxCache);
+ctxCache.readTable_('Compétitions');
+vm.runInContext('_tables = {};', ctxCache);
+ctxCache.readTable_('Compétitions');
+verifie('le direct lit toujours le classeur', vm.runInContext('_ouvertures', ctxCache), 2);
+
 console.log(ko ? '\n' + ko + ' test(s) en échec' : '\nTous les tests passent.');
 process.exit(ko ? 1 : 0);

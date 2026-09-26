@@ -219,6 +219,19 @@ function apiParametres(jeton) {
   };
 }
 
+/**
+ * Vide le cache de lecture du classeur. Utile après une retouche faite
+ * directement dans le Sheet : les écrans repartent des données du classeur
+ * sans attendre les quelques minutes d'expiration.
+ */
+function apiViderCache(jeton) {
+  const ctx = contexte_(jeton);
+  if (!ctx.estAdmin) return { ok: false, message: 'Réservé à l’administrateur.' };
+  oublierTables_();
+  _paramsCache = null;
+  return { ok: true, message: 'Cache vidé : les prochains écrans relisent le classeur.' };
+}
+
 function apiEnregistrerParametres(jeton, valeurs) {
   const ctx = contexte_(jeton);
   exigerAdmin_(ctx);

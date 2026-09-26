@@ -14,14 +14,148 @@ function ss_() {
 let _feuilles = {};
 let _tables = {};
 
+/* ---------- Cache partagé entre les appels ---------- */
+
+/*
+ * Sans cache, chaque appel relit des onglets entiers : la connexion, les
+ * paramètres et la liste des archers repartent du classeur à chaque fois.
+ * Ces lectures sont désormais gardées quelques heures dans le cache du
+ * script, et oubliées dès qu'une écriture touche l'onglet concerné — chaque
+ * onglet porte un numéro de version qui change à l'écriture, si bien qu'une
+ * donnée périmée n'est jamais servie.
+ */
+/*
+ * Cinq minutes seulement : l'application vide elle-même le cache dès qu'elle
+ * écrit, mais une modification faite À LA MAIN dans le classeur ne prévient
+ * personne. Cette durée courte garantit qu'une retouche manuelle apparaît vite,
+ * tout en évitant de relire les onglets à chaque appel.
+ */
+const CACHE_DUREE = 300;
+const CACHE_MORCEAU = 90000;        // une entrée de cache accepte 100 Ko
+const CACHE_TAILLE_MAX = 700000;    // au-delà, on ne met pas en cache
+
+/** Onglets mis en cache : ceux qui changent peu ou se lisent tout le temps. */
+function ongletCachable_(name) {
+  return name === SHEETS.ADHERENTS || name === SHEETS.UTILISATEURS ||
+    name === SHEETS.PARAMETRES || name === SHEETS.SCORES ||
+    name === SHEETS.DISPONIBILITES || name === SHEETS.MESSAGES;
+}
+
+function cache_() {
+  try { return CacheService.getScriptCache(); } catch (e) { return null; }
+}
+
+let _versions = null;
+function versionOnglet_(name) {
+  if (!_versions) {
+    try {
+      _versions = PropertiesService.getScriptProperties().getProperties() || {};
+    } catch (e) {
+      _versions = {};
+    }
+  }
+  return String(_versions['V_' + name] || '1');
+}
+
+/** Change le numéro de version : le cache de cet onglet devient inaccessible. */
+function nouvelleVersionOnglet_(name) {
+  const suivante = String((Number(versionOnglet_(name)) || 1) + 1);
+  _versions['V_' + name] = suivante;
+  try {
+    PropertiesService.getScriptProperties().setProperty('V_' + name, suivante);
+  } catch (e) { /* quota atteint : le cache expirera de lui-même */ }
+}
+
+/*
+ * Les cellules de date arrivent du classeur en objets Date ; le passage par
+ * JSON les transformerait en texte. On les marque à l'écriture pour les
+ * rendre telles quelles à la lecture.
+ */
+function _cacheRemplacer(cle, valeur) {
+  const brut = this[cle];
+  return brut instanceof Date ? { __d: brut.getTime() } : valeur;
+}
+
+function _cacheRelire(cle, valeur) {
+  if (valeur && typeof valeur === 'object' && typeof valeur.__d === 'number') {
+    return new Date(valeur.__d);
+  }
+  return valeur;
+}
+
+function lireCache_(cle) {
+  const c = cache_();
+  if (!c) return null;
+  try {
+    const tete = c.get(cle);
+    if (!tete) return null;
+    const nombre = Number(tete);
+    if (!isFinite(nombre) || nombre <= 0) return null;
+    const cles = [];
+    for (let i = 0; i < nombre; i++) cles.push(cle + '#' + i);
+    const morceaux = c.getAll(cles);
+    let texte = '';
+    for (let i = 0; i < nombre; i++) {
+      const m = morceaux[cle + '#' + i];
+      if (m === undefined || m === null) return null;   // morceau expiré : on recalcule
+      texte += m;
+    }
+    return JSON.parse(texte, _cacheRelire);
+  } catch (e) {
+    return null;
+  }
+}
+
+function ecrireCache_(cle, valeur, duree) {
+  const c = cache_();
+  if (!c) return;
+  let texte;
+  try {
+    texte = JSON.stringify(valeur, _cacheRemplacer);
+  } catch (e) {
+    return;
+  }
+  if (!texte || texte.length > CACHE_TAILLE_MAX) return;
+  const paquet = {};
+  let nombre = 0;
+  for (let i = 0; i < texte.length; i += CACHE_MORCEAU) {
+    paquet[cle + '#' + nombre] = texte.substring(i, i + CACHE_MORCEAU);
+    nombre++;
+  }
+  paquet[cle] = String(nombre);
+  try { c.putAll(paquet, duree || CACHE_DUREE); } catch (e) { /* sans conséquence */ }
+}
+
+/**
+ * Mémorise le résultat d'un calcul tant que les onglets dont il dépend n'ont
+ * pas changé. `cle` décrit le calcul (archer, filtres…).
+ */
+function memoCalcul_(cle, onglets, calcul) {
+  const version = (onglets || []).map(versionOnglet_).join('.');
+  const complete = 'calc|' + cle + '|' + version;
+  const garde = lireCache_(complete);
+  if (garde) return garde;
+  const resultat = calcul();
+  if (resultat) ecrireCache_(complete, resultat);
+  return resultat;
+}
+
 /**
  * Oublie les lectures mémorisées : à appeler après toute écriture qui ne
- * passe pas par appendObject_ / updateObject_ / deleteRow_.
+ * passe pas par appendObject_ / updateObject_ / deleteRow_. Le cache partagé
+ * entre appels est invalidé en même temps.
  */
 function oublierTables_(name) {
-  if (name) { delete _tables[name]; return; }
+  if (name) {
+    delete _tables[name];
+    if (ongletCachable_(name)) nouvelleVersionOnglet_(name);
+    return;
+  }
   _tables = {};
   _feuilles = {};
+  Object.keys(SHEETS).forEach(function (k) {
+    if (ongletCachable_(SHEETS[k])) nouvelleVersionOnglet_(SHEETS[k]);
+  });
 }
 
 function findSheet_(name) {
@@ -72,7 +206,24 @@ function headers_(name) {
 function readTable_(name) {
   // Un même appel relit souvent les mêmes onglets (compte, inscrit, scores) :
   // la lecture est mémorisée le temps de l'exécution, et oubliée à l'écriture.
-  if (!_tables[name]) _tables[name] = lireOnglet_(name);
+  if (_tables[name]) return _tables[name].slice();
+
+  // Puis le cache partagé, qui évite de rouvrir le classeur d'un appel à
+  // l'autre tant que l'onglet n'a pas changé.
+  if (ongletCachable_(name)) {
+    const cle = 'onglet|' + name + '|' + versionOnglet_(name);
+    const garde = lireCache_(cle);
+    if (garde) {
+      _tables[name] = garde;
+      return garde.slice();
+    }
+    const lu = lireOnglet_(name);
+    _tables[name] = lu;
+    ecrireCache_(cle, lu);
+    return lu.slice();
+  }
+
+  _tables[name] = lireOnglet_(name);
   return _tables[name].slice();
 }
 

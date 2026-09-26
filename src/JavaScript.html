@@ -254,6 +254,7 @@ function deconnecter(message) {
   jeton = null;
   document.getElementById('ecranChargement').style.display = 'none';
   oublierJeton();
+  oublierDemarrage();
   document.getElementById('app').style.display = 'none';
   document.getElementById('ecranConnexion').style.display = '';
   if (message) notifier(message, true);
@@ -261,8 +262,64 @@ function deconnecter(message) {
 
 /* ---------- Démarrage ---------- */
 
+/*
+ * Ouverture immédiate : la dernière réponse du serveur est gardée dans le
+ * téléphone. À l'ouverture suivante, l'application s'affiche tout de suite
+ * avec ces données, puis le serveur est interrogé en fond et l'écran se met à
+ * jour sans que rien ne clignote. Ce qui doit être frais — séance en cours,
+ * mini-compétition en direct, messages — n'est jamais pris du cache.
+ */
+const CLE_DEMARRAGE = 'arc.demarrage';
+const DEMARRAGE_MAX_JOURS = 15;
+
+function memoriserDemarrage(d) {
+  try {
+    const copie = Object.assign({}, d);
+    delete copie.brouillon;          // la séance en cours vient du serveur
+    delete copie.competition;        // le direct aussi
+    delete copie.messages;
+    const texte = JSON.stringify({ le: Date.now(), jeton: jeton, donnees: copie });
+    if (texte.length > 1500000) return;
+    localStorage.setItem(CLE_DEMARRAGE, texte);
+  } catch (e) { /* stockage plein ou navigation privée : sans conséquence */ }
+}
+
+function demarrageMemorise() {
+  try {
+    const brut = localStorage.getItem(CLE_DEMARRAGE);
+    if (!brut) return null;
+    const o = JSON.parse(brut);
+    if (!o || o.jeton !== jeton || !o.donnees || !o.donnees.moi) return null;
+    if (Date.now() - (o.le || 0) > DEMARRAGE_MAX_JOURS * 86400000) return null;
+    return o.donnees;
+  } catch (e) {
+    return null;
+  }
+}
+
+function oublierDemarrage() {
+  try { localStorage.removeItem(CLE_DEMARRAGE); } catch (e) { /* rien à faire */ }
+}
+
 function demarrer() {
   api('apiDemarrage').then(function (d) {
+    appliquerDemarrage(d, false);
+    memoriserDemarrage(d);
+  }).catch(function (e) {
+    document.getElementById('ecranChargement').style.display = 'none';
+    // L'application est affichée : l'erreur vient d'un rendu, pas de la session.
+    if (document.getElementById('app').style.display === '') { console.error(e); return; }
+    if (!jeton) return;           // session refusée : api() a déjà tout remis en place
+    jeton = null;
+    oublierJeton();
+    oublierDemarrage();
+    document.getElementById('ecranConnexion').style.display = '';
+  });
+}
+
+/** Met les données du démarrage à l'écran. `depuisCache` : données du téléphone. */
+function appliquerDemarrage(d, depuisCache) {
+  {
     etat.moi = d.moi;
     etat.ref = d.referentiels;
     etat.role = d.role;
@@ -300,29 +357,26 @@ function demarrer() {
     document.getElementById('ecranChargement').style.display = 'none';
     etat.comparaison = null;
     rendreAccueil(d);
-    if (d.motDePasseParDefaut) {
+    if (d.motDePasseParDefaut && !depuisCache) {
       notifier('Pensez à changer votre mot de passe dans l’onglet Profil.');
     }
-    preparerFormulaireScore();
+    // Le formulaire n'est pas remis à zéro si l'archer a déjà commencé à régler
+    // une partie pendant que le serveur répondait.
+    if (!etat.reglagesValides) preparerFormulaireScore();
     rendreProgression(d.progression);
     rendreProfil();
     // Inscrits, parties et messages arrivent avec le démarrage ; les appels
     // séparés ne servent plus que si le serveur n'est pas encore à jour.
-    if (d.inscrits) appliquerInscrits({ adherents: d.inscrits }); else chargerInscrits();
-    if (d.scores) afficherScores(d.scores, false); else chargerScores();
-    surveillerMessages(d.messages);
-    etat.competitionProposee = d.competition || null;
-    reprendreBrouillon(d.brouillon);
-    majBandeauDirect();
-  }).catch(function (e) {
-    document.getElementById('ecranChargement').style.display = 'none';
-    // L'application est affichée : l'erreur vient d'un rendu, pas de la session.
-    if (document.getElementById('app').style.display === '') { console.error(e); return; }
-    if (!jeton) return;           // session refusée : api() a déjà tout remis en place
-    jeton = null;
-    oublierJeton();
-    document.getElementById('ecranConnexion').style.display = '';
-  });
+    if (d.inscrits) appliquerInscrits({ adherents: d.inscrits }); else if (!depuisCache) chargerInscrits();
+    if (d.scores) afficherScores(d.scores, false); else if (!depuisCache) chargerScores();
+    // Séance en cours, direct et messages : seulement sur des données fraîches.
+    if (!depuisCache) {
+      surveillerMessages(d.messages);
+      etat.competitionProposee = d.competition || null;
+      reprendreBrouillon(d.brouillon);
+      majBandeauDirect();
+    }
+  }
 }
 
 /* ---------- Navigation ---------- */
@@ -6015,7 +6069,14 @@ function rendreParametresApp(r) {
     }).join('') +
     '<div class="actions"><button type="submit" class="principal" id="btnParametres">Enregistrer</button></div>' +
     '<p class="muet" style="margin:10px 0 0">Le nom du club et la saison s’affichent partout ' +
-    'à la prochaine ouverture de l’application.</p></form>';
+    'à la prochaine ouverture de l’application.</p></form>' +
+    '<div class="titre-section"><h3>Données du classeur</h3></div><div class="carte">' +
+    '<p class="muet" style="margin:0 0 10px">Pour aller vite, l’application garde quelques ' +
+    'minutes en mémoire ce qu’elle a lu dans le classeur. Elle l’oublie dès qu’un archer ' +
+    'enregistre quelque chose. Si vous venez de modifier le classeur <strong>à la main</strong>, ' +
+    'ce bouton force la relecture immédiate.</p>' +
+    '<div class="actions"><button type="button" class="secondaire" onclick="viderCacheServeur(this)">' +
+    'Relire le classeur maintenant</button></div></div>';
 
   el.innerHTML = html;
   document.getElementById('formParametres').addEventListener('input', function (e) {
@@ -6025,6 +6086,21 @@ function rendreParametresApp(r) {
   document.getElementById('formParametres').addEventListener('change', function (e) {
     const bloc = e.target.closest('.parametre');
     if (bloc) bloc.classList.toggle('modifie', e.target.value !== bloc.dataset.initial);
+  });
+}
+
+/** Force la relecture du classeur après une modification faite à la main. */
+function viderCacheServeur(bouton) {
+  if (bouton) { bouton.disabled = true; bouton.textContent = 'Relecture…'; }
+  api('apiViderCache').then(function (r) {
+    notifier(r.message, !r.ok);
+    if (r.ok) {
+      oublierDemarrage();
+      chargerScores();
+      rafraichirProgression();
+    }
+  }).then(function () {
+    if (bouton) { bouton.disabled = false; bouton.textContent = 'Relire le classeur maintenant'; }
   });
 }
 
@@ -6476,7 +6552,18 @@ function ouvrirChangementMotDePasse() {
   // Pas de vérification préalable : le démarrage contrôle lui-même la session,
   // ce qui économise un aller-retour complet avec le serveur.
   document.getElementById('ecranConnexion').style.display = 'none';
-  document.getElementById('ecranChargement').style.display = '';
+  // Affichage immédiat avec la dernière réponse connue, s'il y en a une.
+  const garde = demarrageMemorise();
+  if (garde) {
+    try {
+      appliquerDemarrage(garde, true);
+    } catch (e) {
+      console.warn('Affichage immédiat impossible : ' + (e && e.message));
+      document.getElementById('ecranChargement').style.display = '';
+    }
+  } else {
+    document.getElementById('ecranChargement').style.display = '';
+  }
   demarrer();
 })();
 </script>

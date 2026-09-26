@@ -70,6 +70,15 @@ function synthetiserZones_(zones) {
  * période. Sans option, les statistiques portent sur toutes les parties.
  */
 function statistiquesArcher_(adherentId, options) {
+  // Le calcul relit toutes les parties de l'archer : on garde le résultat
+  // tant qu'aucune partie n'a été enregistrée, modifiée ou supprimée.
+  const opt = options || {};
+  return memoCalcul_('stats|' + adherentId + '|' + JSON.stringify(opt), [SHEETS.SCORES], function () {
+    return calculerStatistiquesArcher_(adherentId, opt);
+  });
+}
+
+function calculerStatistiquesArcher_(adherentId, options) {
   const opt = options || {};
   const toutes = readTable_(SHEETS.SCORES)
     .filter(function (r) { return String(r['AdhérentID']) === String(adherentId); })

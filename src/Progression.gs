@@ -9,6 +9,12 @@
  */
 function calculerProgression_(adherentId) {
   if (!trouverAdherentParId_(adherentId)) return null;
+  return memoCalcul_('progression|' + adherentId, [SHEETS.SCORES], function () {
+    return calculerProgressionSansCache_(adherentId);
+  });
+}
+
+function calculerProgressionSansCache_(adherentId) {
 
   const scores = readTable_(SHEETS.SCORES)
     .filter(function (r) { return String(r['AdhérentID']) === String(adherentId); })
@@ -297,6 +303,21 @@ const POIDS_CLASSEMENT = {
 function apiClassementClub(jeton, filtres) {
   const ctx = contexte_(jeton);
   const f = filtres || {};
+  // Le classement parcourt toutes les parties de tous les archers : on le
+  // garde tant que ni les scores ni la liste des inscrits n'ont bougé.
+  const r = memoCalcul_('classement|' + JSON.stringify(f), [SHEETS.SCORES, SHEETS.ADHERENTS], function () {
+    return calculerClassementClub_(f);
+  });
+  // Le classement est le même pour tout le monde : seule la ligne « moi »
+  // dépend de celui qui regarde, elle est donc posée après coup.
+  if (r && r.archers) {
+    r.archers.forEach(function (a) { a.moi = a.id === ctx.id; });
+  }
+  return r;
+}
+
+function calculerClassementClub_(filtres) {
+  const f = filtres || {};
   const depuis = Number(f.periode)
     ? isoDate_(new Date(now_().getTime() - Number(f.periode) * 86400000)) : '';
   const arrondi = function (v, n) { const p = Math.pow(10, n || 0); return Math.round(v * p) / p; };
@@ -379,7 +400,7 @@ function apiClassementClub(jeton, filtres) {
       }
       a.liste.sort(function (x, y) { return x.date < y.date ? 1 : x.date > y.date ? -1 : 0; });
       return {
-        id: a.id, nom: a.nom, categorie: a.categorie, arme: a.arme, moi: a.id === ctx.id,
+        id: a.id, nom: a.nom, categorie: a.categorie, arme: a.arme,
         parties: a.liste.length, fleches: a.fleches, points: a.points,
         moyenne: arrondi(a.points / a.fleches, 2),
         tauxDix: arrondi((a.dix / a.fleches) * 100, 1),
