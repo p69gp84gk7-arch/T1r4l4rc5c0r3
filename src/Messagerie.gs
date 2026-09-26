@@ -24,9 +24,19 @@ function serialiserMessage_(r) {
 
 /** Messages visibles par l'archer : le fil du club et ceux qui lui sont adressés. */
 function messagesPour_(ctx) {
+  // Le classeur ne garde que l'identifiant du destinataire : on y joint son nom
+  // pour que le message archivé dise à qui il a été adressé.
+  const noms = {};
+  readTable_(SHEETS.ADHERENTS).forEach(function (r) {
+    noms[String(r['ID'])] = r['Prénom'] + ' ' + r['Nom'];
+  });
   return readTable_(SHEETS.MESSAGES).map(serialiserMessage_).filter(function (m) {
     if (m.portee === 'Club') return true;
     return m.destinataire === ctx.id || m.auteurId === ctx.id;
+  }).map(function (m) {
+    m.destinataireNom = m.destinataire ? (noms[m.destinataire] || 'Archer retiré') : '';
+    m.pourMoi = m.destinataire === ctx.id;
+    return m;
   }).sort(function (a, b) { return b.horodatage - a.horodatage; });
 }
 

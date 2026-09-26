@@ -22,29 +22,28 @@
   <style>
     /*
      * L'application tourne dans un cadre, et un cadre ne connaît pas les
-     * encoches ni la barre d'accueil du téléphone : c'est donc cette page qui
-     * réserve les marges. Le fond suit le thème pour qu'aucune bande de
-     * couleur n'apparaisse autour.
+     * encoches ni la barre d'accueil du téléphone. Cette page les mesure et
+     * transmet les valeurs à l'application, qui étire elle-même son entête
+     * sous l'heure et sa barre d'onglets jusqu'au bas de l'écran : aucune
+     * bande de couleur ne vient couper l'image.
      */
-    :root { color-scheme: light dark; --bord: #f4f3ef; --haut: #15594a; --bas: #ffffff; }
-    @media (prefers-color-scheme: dark) { :root { --bord: #0d1311; --bas: #151d1a; } }
+    :root { color-scheme: light dark; --bord: #f4f3ef; --haut: #15594a; --bas: #f4f3ef; }
+    @media (prefers-color-scheme: dark) { :root { --bord: #0d1311; --bas: #0d1311; } }
 
     html, body { margin: 0; height: 100%; overflow: hidden; }
-    /* Le bas de l'écran prolonge la barre d'onglets de l'application. */
+    /* Visible seulement le temps du chargement, derrière le cadre. */
+    html { background: var(--bas); }
     body { background: var(--bas); }
-    /* Le haut prolonge l'entête coloré : plus de bande ni de titre flouté
-       sous l'heure du téléphone. */
-    .bord-haut {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 2;
-      height: env(safe-area-inset-top, 0px); background: var(--haut);
-    }
-    body {
-      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
-               env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
-      box-sizing: border-box;
-    }
 
-    /* Le cadre occupe tout l'espace restant et reçoit seul les appuis. */
+    /* Sondes de mesure : leur taille vaut exactement la marge de l'écran. */
+    .sonde {
+      position: fixed; left: 0; width: 1px; pointer-events: none;
+      visibility: hidden; z-index: -1;
+    }
+    #sondeHaut { top: 0; height: env(safe-area-inset-top, 0px); }
+    #sondeBas { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
+
+    /* Le cadre occupe tout l'écran, marges comprises, et reçoit seul les appuis. */
     iframe {
       border: 0; width: 100%; height: 100%; display: block;
       background: var(--bord); position: relative; z-index: 1;
@@ -83,7 +82,8 @@
 <body>
   <iframe id="app" title="Espace archers" allow="clipboard-write"></iframe>
 
-  <div class="bord-haut"></div>
+  <div class="sonde" id="sondeHaut"></div>
+  <div class="sonde" id="sondeBas"></div>
 
   <div class="notifs" id="notifs">
     <p>Être prévenu des nouveaux messages du club sur ce téléphone ?</p>
@@ -117,6 +117,47 @@
        ------------------------------------------------------------------ */
     function sourceFiable(origine) {
       return /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|google\.com)$/.test(origine);
+    }
+
+    /* ------------------------------------------------------------------
+       Marges de l'écran : le cadre ne peut pas les mesurer (env() y vaut
+       toujours zéro). On les mesure ici et on les lui envoie.
+       ------------------------------------------------------------------ */
+    var sondeHaut = document.getElementById('sondeHaut');
+    var sondeBas = document.getElementById('sondeBas');
+
+    function envoyerMarges() {
+      if (!cadre.contentWindow) return;
+      var installee = window.navigator.standalone === true ||
+        (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      var haut = sondeHaut.offsetHeight;
+      // Depuis l'écran d'accueil, l'heure du téléphone se pose sur la page :
+      // même sans encoche déclarée, il lui faut de la place.
+      if (installee && haut < 20) haut = 20;
+      try {
+        cadre.contentWindow.postMessage(
+          { arc: true, type: 'marges', haut: haut, bas: sondeBas.offsetHeight }, '*');
+      } catch (e) { /* cadre pas encore prêt */ }
+    }
+
+    /* ------------------------------------------------------------------
+       « Rester connecté » : l'adresse du cadre change à chaque visite, sa
+       mémoire est donc perdue. Cette page-ci garde toujours la même adresse :
+       c'est elle qui conserve la session, et la rend au démarrage.
+       ------------------------------------------------------------------ */
+    var CLE_SESSION = 'arc.session';
+
+    function garderSession(valeur) {
+      try {
+        if (valeur) localStorage.setItem(CLE_SESSION, valeur);
+        else localStorage.removeItem(CLE_SESSION);
+      } catch (e) { /* navigation privée */ }
+    }
+
+    function rendreSession(fenetre, origine) {
+      var v = null;
+      try { v = localStorage.getItem(CLE_SESSION); } catch (e) { /* rien gardé */ }
+      try { fenetre.postMessage({ arc: true, type: 'jeton', valeur: v }, origine); } catch (e) {}
     }
 
     function posterPastille(nombre) {
@@ -164,11 +205,23 @@
     window.addEventListener('message', function (e) {
       var m = e.data;
       if (!m || m.arc !== true || !sourceFiable(e.origin)) return;
+      // L'application parle : elle est donc en place pour recevoir les marges.
+      envoyerMarges();
       if (m.type === 'couleurs') {
         // L'application connaît le thème choisi par l'archer : on s'y accorde.
         if (m.haut) document.documentElement.style.setProperty('--haut', m.haut);
-        if (m.bas) document.documentElement.style.setProperty('--bas', m.bas);
-        if (m.bas) document.documentElement.style.setProperty('--bord', m.bas);
+        if (m.bas) {
+          document.documentElement.style.setProperty('--bas', m.bas);
+          document.documentElement.style.setProperty('--bord', m.bas);
+          // iOS peint lui-même le tour de l'écran avec cette couleur : elle
+          // doit être celle du bas de l'application, jamais le vert d'origine.
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', m.bas);
+        }
+      } else if (m.type === 'demanderJeton') {
+        rendreSession(e.source, e.origin);
+      } else if (m.type === 'jeton') {
+        garderSession(m.valeur || null);
       } else if (m.type === 'pastille') {
         posterPastille(Number(m.nombre) || 0);
         proposerNotifications();
@@ -178,7 +231,9 @@
     });
 
     var chargee = false;
-    cadre.addEventListener('load', function () { chargee = true; });
+    cadre.addEventListener('load', function () { chargee = true; envoyerMarges(); });
+    window.addEventListener('resize', envoyerMarges);
+    window.addEventListener('orientationchange', function () { setTimeout(envoyerMarges, 250); });
 
     // Le secours n'apparaît que si le cadre n'a rien affiché au bout de 12 s.
     setTimeout(function () {

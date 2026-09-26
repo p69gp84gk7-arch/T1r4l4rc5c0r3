@@ -16,6 +16,10 @@ function memoriserJeton(valeur, persistant) {
   try {
     (persistant ? localStorage : sessionStorage).setItem(CLE_JETON, valeur);
   } catch (e) { /* navigation privée */ }
+  // L'adresse du cadre change à chaque visite : sa mémoire est perdue d'une
+  // fois sur l'autre. Seule la page d'accueil, elle, garde la même adresse —
+  // c'est donc elle qui conserve la session cochée « Rester connecté ».
+  versPageAccueil({ type: 'jeton', valeur: persistant ? valeur : null });
 }
 
 function jetonMemorise() {
@@ -31,6 +35,7 @@ function oublierJeton() {
     sessionStorage.removeItem(CLE_JETON);
     localStorage.removeItem(CLE_JETON);
   } catch (e) { /* navigation privée */ }
+  versPageAccueil({ type: 'jeton', valeur: null });
 }
 let etat = { moi: null, ref: {}, inscrits: [], progression: null };
 
@@ -4366,22 +4371,30 @@ function filtresStats(s, f) {
       }).join('') + '</select></div>';
   }
 
-  html += '<div class="champ" style="margin-bottom:10px"><label>Séance</label>' +
-    '<select onchange="filtrerStats(\'scoreId\', this.value)">' +
-    '<option value="">Toutes les parties</option>' +
-    (s.filtres.seances || []).map(function (p) {
-      return option(p.id, dateFr(p.date) + ' — ' + (p.seance || p.discipline) +
-        (p.lieu ? ' (' + p.lieu + ')' : '') + ' · ' + p.score, f.scoreId);
-    }).join('') + '</select></div>';
+  // Séance : un curseur, un point de repère par partie. Le doigt parcourt
+  // l'historique de la plus ancienne à la plus récente sans dérouler de liste.
+  const seances = (s.filtres.seances || []).slice().sort(function (a, b) {
+    return String(a.date) < String(b.date) ? -1 : 1;
+  });
+  html += curseurChoix({
+    id: 'curSeance', libelle: 'Séance', action: 'scoreId',
+    options: [{ v: '', l: 'Toutes les parties' }].concat(seances.map(function (p) {
+      return { v: p.id, l: dateFr(p.date) + ' — ' + (p.seance || p.discipline) +
+        (p.lieu ? ' (' + p.lieu + ')' : '') + ' · ' + p.score + ' pts' };
+    })),
+    valeur: f.scoreId || '',
+    bornes: ['Toutes', seances.length ? 'La plus récente' : ''],
+  });
 
   if (!f.scoreId) {
-    html += '<div class="champ" style="margin-bottom:10px"><label>Période</label>' +
-      '<select onchange="filtrerStats(\'periode\', this.value)">' +
-      [{ v: '', l: 'Depuis toujours' }, { v: '30', l: '30 derniers jours' },
-       { v: '90', l: '3 derniers mois' }, { v: '365', l: '12 derniers mois' },
-       { v: 'perso', l: 'Dates précises…' }].map(function (o) {
-        return option(o.v, o.l, f.periode);
-      }).join('') + '</select></div>' +
+    html += curseurChoix({
+      id: 'curPeriode', libelle: 'Période', action: 'periode',
+      options: [{ v: '', l: 'Depuis toujours' }, { v: '365', l: '12 derniers mois' },
+        { v: '90', l: '3 derniers mois' }, { v: '30', l: '30 derniers jours' },
+        { v: 'perso', l: 'Dates précises…' }],
+      valeur: f.periode || '',
+      bornes: ['Tout', 'Dates précises'],
+    }) +
       (f.periode === 'perso'
         ? '<div class="duo" style="margin-bottom:10px">' +
           '<div><label>Du</label><input type="date" value="' + esc(f.depuis || '') +
@@ -4412,6 +4425,58 @@ function filtresStats(s, f) {
       'Voir toutes les parties</button></div>';
   }
   return html + '</div>';
+}
+
+/**
+ * Curseur de sélection : une position par choix, un point de repère sous
+ * chacune. Le libellé se met à jour pendant le glissement ; les statistiques
+ * ne sont recalculées qu'au relâchement.
+ */
+function curseurChoix(o) {
+  etat.curseurs = etat.curseurs || {};
+  etat.curseurs[o.id] = o;
+  let i = 0;
+  o.options.forEach(function (x, k) { if (x.v === o.valeur) i = k; });
+  const n = o.options.length - 1;
+  // Au-delà d'une trentaine de parties, les points se toucheraient : on n'en
+  // garde qu'un sur deux, le repère reste lisible.
+  const pas = n > 30 ? Math.ceil((n + 1) / 30) : 1;
+  let points = '';
+  for (let k = 0; k <= n; k += pas) {
+    points += '<span class="' + (k === i ? 'ici' : '') + '"></span>';
+  }
+  return '<div class="curseur-choix" id="' + o.id + '"><label>' + esc(o.libelle) + '</label>' +
+    '<div class="valeur-choix" id="' + o.id + 'Texte">' + esc(o.options[i].l) + '</div>' +
+    '<input type="range" min="0" max="' + n + '" step="1" value="' + i + '"' +
+    ' aria-label="' + esc(o.libelle) + '"' +
+    ' oninput="apercuCurseur(\'' + o.id + '\', this.value)"' +
+    ' onchange="validerCurseur(\'' + o.id + '\', this.value)">' +
+    (n > 0 ? '<div class="reperes">' + points + '</div>' : '') +
+    (n > 0 && o.bornes ? '<div class="bornes"><span>' + esc(o.bornes[0] || '') +
+      '</span><span>' + esc(o.bornes[1] || '') + '</span></div>' : '') + '</div>';
+}
+
+/** Pendant le glissement : seul le libellé bouge. */
+function apercuCurseur(id, i) {
+  const o = (etat.curseurs || {})[id];
+  const bloc = document.getElementById(id);
+  if (!o || !bloc) return;
+  const choix = o.options[Number(i)] || o.options[0];
+  const texte = document.getElementById(id + 'Texte');
+  if (texte) texte.textContent = choix.l;
+  const points = bloc.querySelectorAll('.reperes span');
+  const pas = points.length ? Math.max(1, Math.round((o.options.length - 1) / Math.max(1, points.length - 1))) : 1;
+  Array.prototype.forEach.call(points, function (p, k) {
+    p.classList.toggle('ici', k * pas === Number(i));
+  });
+}
+
+/** Au relâchement : le filtre est appliqué. */
+function validerCurseur(id, i) {
+  const o = (etat.curseurs || {})[id];
+  if (!o) return;
+  const choix = o.options[Number(i)] || o.options[0];
+  filtrerStats(o.action, choix.v);
 }
 
 function changerArcherStats(id) {
@@ -4761,7 +4826,7 @@ const COULEURS_SERIES = ['var(--accent)', 'var(--z-rouge)', 'var(--or)', 'var(--
 
 function grapheMesures(o) {
   o.mesures = (o.mesures || []).filter(function (m) {
-    const n = m.series.reduce(function (t, x) {
+    const n = (m.series || []).reduce(function (t, x) {
       return Math.max(t, x.points.filter(function (p) { return p && p.v !== null && p.v !== undefined; }).length);
     }, 0);
     return n >= (m.aligne ? 1 : 2);
@@ -4773,26 +4838,166 @@ function grapheMesures(o) {
   return '<div class="graphe-mesures" id="' + o.id + '">' + contenuGrapheMesures(o) + '</div>';
 }
 
+/**
+ * Mesure réellement dessinée pour une pastille : celle de sa variante choisie
+ * dans le petit menu (pourcentage, nombre de flèches…), sinon la première.
+ */
+function mesureActive(o, m) {
+  if (!m || !m.variantes || !m.variantes.length) return m;
+  const choix = ((etat.variantes || {})[o.id] || {})[m.code];
+  const v = m.variantes.filter(function (x) { return x.code === choix; })[0] || m.variantes[0];
+  return Object.assign({}, m, v, { code: m.code, variantes: m.variantes, varianteActive: v.code });
+}
+
+/**
+ * Superposition : plusieurs mesures sur un même dessin. Les unités n'étant pas
+ * comparables (des points, des centimètres, des pourcentages), chaque courbe
+ * est ramenée à sa propre échelle — 0 sa plus faible valeur, 100 sa plus
+ * forte. On compare les formes ; la lecture affiche les valeurs réelles.
+ */
+function mesureCombinee(o) {
+  const codes = (etat.combines || {})[o.id] || [];
+  const choisies = o.mesures.filter(function (m) { return codes.indexOf(m.code) !== -1; })
+    .map(function (m) { return mesureActive(o, m); });
+  if (choisies.length < 2) return null;
+
+  const ref = choisies[0];
+  const series = [];
+  choisies.forEach(function (m) {
+    m.series.forEach(function (s) {
+      const vals = s.points.filter(function (p) { return p && p.v !== null && p.v !== undefined; })
+        .map(function (p) { return p.v; });
+      if (!vals.length) return;
+      const mini = Math.min.apply(null, vals);
+      const etendue = (Math.max.apply(null, vals) - mini) || 1;
+      series.push({
+        nom: m.libelle + (m.series.length > 1 && s.nom ? ' · ' + s.nom : ''),
+        points: s.points.map(function (p) {
+          if (!p || p.v === null || p.v === undefined) return { v: null };
+          return Object.assign({}, p, {
+            v: Math.round(((p.v - mini) / etendue) * 1000) / 10,
+            affiche: formatMesure(p.v, m),
+          });
+        }),
+      });
+    });
+  });
+  if (series.length < 2) return null;
+
+  return {
+    code: '__combine', libelle: 'Superposition', unite: '', type: 'ligne', legende: true,
+    aligne: ref.aligne, etiquettes: ref.etiquettes, ouvrir: ref.ouvrir, echelleRelative: true,
+    aide: 'Chaque mesure garde son échelle : le bas du graphique est sa plus faible valeur, ' +
+      'le haut sa plus forte. On compare les formes, pas les unités — les valeurs réelles ' +
+      's’affichent à la lecture.',
+    series: series,
+  };
+}
+
 function contenuGrapheMesures(o) {
-  const m = o.mesures.filter(function (x) { return x.code === o.actif; })[0];
-  if (o.ouvrir) m.ouvrir = o.ouvrir;
-  const puces = o.mesures.length > 1
+  const plusieurs = o.mesures.length > 1;
+  const combine = plusieurs && !!(etat.combine || {})[o.id];
+  let m = combine ? mesureCombinee(o) : null;
+  if (!m) m = mesureActive(o, o.mesures.filter(function (x) { return x.code === o.actif; })[0] || o.mesures[0]);
+  if (o.ouvrir && !m.ouvrir) m.ouvrir = o.ouvrir;
+
+  const codes = (etat.combines || {})[o.id] || [];
+  const choisie = function (x) {
+    return combine ? codes.indexOf(x.code) !== -1 : x.code === o.actif;
+  };
+  const puces = plusieurs
     ? '<div class="criteres mesures">' + o.mesures.map(function (x) {
-      return '<button type="button" class="' + (x.code === o.actif ? 'actif' : '') +
-        '" onclick="changerMesure(\'' + o.id + '\', \'' + x.code + '\')">' + esc(x.libelle) + '</button>';
+      const actif = choisie(x) ? ' actif' : '';
+      const v = mesureActive(o, x);
+      const bouton = '<button type="button" class="' + actif.trim() + '" onclick="' +
+        (combine ? 'basculerMesureCombinee' : 'changerMesure') +
+        '(\'' + o.id + '\', \'' + x.code + '\')">' + esc(v.libelle) + '</button>';
+      if (!x.variantes || x.variantes.length < 2) return bouton;
+      // Mini menu déroulant dans la pastille : la même mesure, vue autrement.
+      return '<span class="pilule-menu' + actif + '">' + bouton +
+        '<select aria-label="Variantes de ' + esc(x.libelle) + '" onchange="choisirVariante(\'' +
+        o.id + '\', \'' + x.code + '\', this.value)">' +
+        x.variantes.map(function (w) {
+          return '<option value="' + esc(w.code) + '"' +
+            (w.code === v.varianteActive ? ' selected' : '') + '>' + esc(w.libelle) + '</option>';
+        }).join('') + '</select></span>';
     }).join('') + '</div>'
     : '';
-  return puces + dessinMesure(m, o.cible) +
+
+  const bascule = plusieurs
+    ? '<div class="barre-graphe"><label class="bascule">' +
+      '<input type="checkbox"' + (combine ? ' checked' : '') +
+      ' onchange="basculerCombine(\'' + o.id + '\')"><span class="piste"></span>Superposer</label>' +
+      '<span class="muet" style="font-size:12px">' +
+      (combine ? 'Touchez les mesures à réunir' : 'Une mesure à la fois') + '</span></div>'
+    : '';
+
+  return bascule + puces + dessinMesure(m, o.cible) +
     (m.aide ? '<p class="muet" style="margin:6px 0 0;font-size:12px">' + esc(m.aide) + '</p>' : '');
+}
+
+/** Passe le graphique en superposition, ou en revient. */
+function basculerCombine(id) {
+  etat.combine = etat.combine || {};
+  etat.combines = etat.combines || {};
+  const o = (etat.graphes || {})[id];
+  const actif = !etat.combine[id];
+  etat.combine[id] = actif;
+  if (actif && o) {
+    const deja = (etat.combines[id] || []).filter(function (c) {
+      return o.mesures.some(function (m) { return m.code === c; });
+    });
+    if (deja.length < 2) {
+      // Au premier passage, on part de la mesure affichée et de la suivante :
+      // le graphique montre tout de suite à quoi sert l'interrupteur.
+      const liste = [o.actif];
+      o.mesures.forEach(function (m) { if (liste.length < 2 && m.code !== o.actif) liste.push(m.code); });
+      etat.combines[id] = liste;
+    } else {
+      etat.combines[id] = deja;
+    }
+  }
+  redessinerGraphe(id);
+}
+
+/** Ajoute ou retire une mesure de la superposition (il en reste au moins une). */
+function basculerMesureCombinee(id, code) {
+  etat.combines = etat.combines || {};
+  const liste = (etat.combines[id] || []).slice();
+  const i = liste.indexOf(code);
+  if (i === -1) liste.push(code);
+  else if (liste.length > 1) liste.splice(i, 1);
+  etat.combines[id] = liste;
+  redessinerGraphe(id);
+}
+
+/** Variante choisie dans le menu d'une pastille. */
+function choisirVariante(id, code, variante) {
+  etat.variantes = etat.variantes || {};
+  etat.variantes[id] = etat.variantes[id] || {};
+  etat.variantes[id][code] = variante;
+  // Choisir une variante revient à demander cette mesure.
+  const o = (etat.graphes || {})[id];
+  if (o && !(etat.combine || {})[id]) {
+    etat.graphesActifs = etat.graphesActifs || {};
+    etat.graphesActifs[id] = code;
+    o.actif = code;
+  }
+  redessinerGraphe(id);
 }
 
 function changerMesure(id, code) {
   etat.graphesActifs = etat.graphesActifs || {};
   etat.graphesActifs[id] = code;
   const o = (etat.graphes || {})[id];
+  if (o) o.actif = code;
+  redessinerGraphe(id);
+}
+
+function redessinerGraphe(id) {
+  const o = (etat.graphes || {})[id];
   const el = document.getElementById(id);
   if (!o || !el) return;
-  o.actif = code;
   const rang = el.querySelector('.criteres');
   const defilement = rang ? rang.scrollLeft : 0;
   el.innerHTML = contenuGrapheMesures(o);
@@ -4801,7 +5006,8 @@ function changerMesure(id, code) {
   const nouveau = el.querySelector('.criteres');
   if (nouveau) {
     nouveau.scrollLeft = defilement;
-    const actif = nouveau.querySelector('button.actif');
+    const actif = nouveau.querySelectorAll('button.actif').length === 1
+      ? nouveau.querySelector('button.actif') : null;
     if (actif && actif.scrollIntoView) {
       actif.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
@@ -4817,7 +5023,7 @@ function formatMesure(v, m) {
 }
 
 function dessinMesure(m, cible) {
-  const L = 300, H = 150, marge = 26, basAxe = H - 18;
+  const L = 330, H = 186, marge = 30, basAxe = H - 20;
   const series = m.series.map(function (x, k) {
     return Object.assign({ couleur: COULEURS_SERIES[k % COULEURS_SERIES.length] }, x);
   });
@@ -4890,7 +5096,7 @@ function dessinMesure(m, cible) {
         if (!p || p.v === null || p.v === undefined) return;
         donnees.push({ x: Math.round(xSerie(x, i) * 10) / 10, lien: p.lien === undefined ? null : p.lien,
           texte: (series.length > 1 ? '<span style="color:' + x.couleur + '">●</span> ' + esc(x.nom) + ' · ' : '') +
-            (p.texte || '') + ' · <strong>' + formatMesure(p.v, m) + '</strong>' });
+            (p.texte || '') + ' · <strong>' + (p.affiche || formatMesure(p.v, m)) + '</strong>' });
       });
     }
   });
@@ -4904,7 +5110,7 @@ function dessinMesure(m, cible) {
         if (!p || p.v === null || p.v === undefined) return;
         if (lien === null && p.lien !== undefined) lien = p.lien;
         morceaux.push((series.length > 1 ? '<span style="color:' + x.couleur + '">●</span> ' + esc(x.nom) + ' ' : '') +
-          '<strong>' + formatMesure(p.v, m) + '</strong>' + (p.texte ? ' ' + p.texte : ''));
+          '<strong>' + (p.affiche || formatMesure(p.v, m)) + '</strong>' + (p.texte ? ' ' + p.texte : ''));
       });
       if (!morceaux.length) continue;
       donnees.push({ x: Math.round(centre(i) * 10) / 10, lien: lien,
@@ -4944,8 +5150,10 @@ function dessinMesure(m, cible) {
   return '<div class="graphe-volees" data-cible="' + esc(cible || '') + '"' +
     (m.ouvrir ? ' data-ouvrir="' + esc(m.ouvrir) + '"' : '') +
     ' data-volees="' + esc(JSON.stringify(donnees)) + '">' +
-    '<div class="lecture" aria-live="polite"><span class="muet">' + esc(m.libelle) + (m.unite ? ' (' + esc(m.unite) + ')' : '') + '</span>' + sens + '</div>' +
-    '<svg class="courbe" style="height:170px" viewBox="0 0 ' + L + ' ' + (H + 2) + '">' +
+    '<div class="lecture" aria-live="polite"><span class="muet">' + esc(m.libelle) +
+    (m.echelleRelative ? ' <span class="muet">(échelle relative)</span>' : m.unite ? ' (' + esc(m.unite) + ')' : '') +
+    '</span>' + sens + '</div>' +
+    '<svg class="courbe" viewBox="0 0 ' + L + ' ' + (H + 2) + '">' +
     grilleY(ech, y, L, marge) + dessin +
     '<line class="axe" x1="' + marge + '" y1="' + basAxe + '" x2="' + L + '" y2="' + basAxe + '"/>' + abscisses +
     '<line class="curseur" x1="0" y1="6" x2="0" y2="' + basAxe + '" style="display:none"/>' +
@@ -5019,13 +5227,42 @@ function mesuresParties(profils, comparaison) {
     { code: 'perimetre', libelle: 'Périmètre', unite: 'cm', sens: 'bas',
       aide: 'Périmètre moyen du groupe de chaque volée : la longueur de ficelle pour faire le tour des flèches.' },
     { code: 'aire', libelle: 'Surface', unite: 'cm²', sens: 'bas', aide: 'Surface moyenne couverte par les flèches d’une volée.' },
-    { code: 'jaunes', libelle: '% jaunes', unite: '%', sens: 'haut', aide: 'Part des flèches à 9 ou 10.' },
-    { code: 'dix', libelle: '% de 10', unite: '%', sens: 'haut' },
+    // Les mesures en pourcentage portent un petit menu : la part, ou le
+    // nombre de flèches — « combien de 10 ai-je mis ? » est la vraie question.
+    { code: 'jaunes', libelle: '% jaunes', unite: '%', sens: 'haut', aide: 'Part des flèches à 9 ou 10.',
+      variantes: [
+        { code: 'pct', libelle: '% jaunes (9-10)', cle: 'jaunes', unite: '%' },
+        { code: 'nb', libelle: 'Nombre de 9 et 10', cle: 'nbJaunes', unite: 'fl.' },
+        { code: 'nb10', libelle: 'Nombre de 10', cle: 'nb10', unite: 'fl.' },
+        { code: 'nb9', libelle: 'Nombre de 9', cle: 'nb9', unite: 'fl.' },
+      ] },
+    { code: 'dix', libelle: '% de 10', unite: '%', sens: 'haut',
+      variantes: [
+        { code: 'pct', libelle: '% de 10', cle: 'dix', unite: '%' },
+        { code: 'nb', libelle: 'Nombre de 10', cle: 'nb10', unite: 'fl.' },
+      ] },
+    { code: 'rouges', libelle: '% rouges', unite: '%', sens: 'haut', aide: 'Part des flèches à 7 ou 8.',
+      variantes: [
+        { code: 'pct', libelle: '% rouges (7-8)', cle: 'pctRouges', unite: '%' },
+        { code: 'nb', libelle: 'Nombre de 7 et 8', cle: 'nbRouges', unite: 'fl.' },
+      ] },
     { code: 'regularite', libelle: 'Régularité', unite: 'pts', sens: 'bas',
       aide: 'Écart-type des scores de volée : plus il est bas, plus la partie est régulière.' },
-    { code: 'manquees', libelle: 'Manquées', unite: '', sens: 'bas' },
+    { code: 'manquees', libelle: 'Manquées', unite: 'fl.', sens: 'bas',
+      variantes: [
+        { code: 'nb', libelle: 'Manquées', cle: 'manquees', unite: 'fl.' },
+        { code: 'pct', libelle: '% de manquées', cle: 'pctManquees', unite: '%' },
+      ] },
   ].map(function (m) {
-    return Object.assign({ type: 'ligne', series: serie(m.cle || m.code) }, m);
+    const base = Object.assign({ type: 'ligne', series: serie(m.cle || m.code) }, m);
+    if (m.variantes) {
+      base.variantes = m.variantes.map(function (w) {
+        return Object.assign({ type: 'ligne', sens: m.sens, aide: m.aide }, w,
+          { series: serie(w.cle || w.code) });
+      });
+      Object.assign(base, base.variantes[0], { code: m.code, variantes: base.variantes });
+    }
+    return base;
   });
   if (!comparaison) {
     const x = profils[0];
@@ -5095,6 +5332,37 @@ function mesuresVolees(profils) {
       series: serie(g('ecartCentre')),
       aide: 'Distance entre le centre du groupe de la volée et le centre du blason.' }, base),
   ];
+
+  // Jaunes de chaque volée : en part, ou en nombre de flèches.
+  const compteur = function (test) {
+    return function (v) {
+      return (v.fleches || []).filter(function (f) { return test(f === 'M' ? 0 : Number(f)); }).length;
+    };
+  };
+  const part = function (test) {
+    const c = compteur(test);
+    return function (v) {
+      const n = (v.fleches || []).length;
+      return n ? Math.round((1000 * c(v)) / n) / 10 : null;
+    };
+  };
+  const jaune = function (x) { return x >= 9; };
+  const dix = function (x) { return x === 10; };
+  const neuf = function (x) { return x === 9; };
+  const varianteVolee = function (code, libelle, unite, f) {
+    return Object.assign({ code: code, libelle: libelle, unite: unite, sens: 'haut',
+      type: 'ligne', series: serie(f) }, base);
+  };
+  const variantesJaunes = [
+    varianteVolee('pct', '% jaunes (9-10)', '%', part(jaune)),
+    varianteVolee('nb', 'Nombre de 9 et 10', 'fl.', compteur(jaune)),
+    varianteVolee('nb10', 'Nombre de 10', 'fl.', compteur(dix)),
+    varianteVolee('nb9', 'Nombre de 9', 'fl.', compteur(neuf)),
+  ];
+  liste.push(Object.assign({}, variantesJaunes[0], {
+    code: 'jaunes', variantes: variantesJaunes,
+    aide: 'Flèches à 9 ou 10 de chaque volée. Le menu de la pastille donne aussi le nombre de 10 et de 9.',
+  }));
   if (!multi) {
     const x = profils[0];
     let points = 0;
@@ -5248,7 +5516,7 @@ function graphiqueVolees(volees) {
 
   return '<div class="graphe-volees" data-volees="' + esc(JSON.stringify(donnees)) + '">' +
     '<div class="lecture" aria-live="polite"></div>' +
-    '<svg class="courbe" style="height:160px" viewBox="0 0 ' + L + ' ' + (H + 2) + '">' +
+    '<svg class="courbe" viewBox="0 0 ' + L + ' ' + (H + 2) + '">' +
     grilleY(ech, y, L, marge) + barres +
     '<path class="trait" d="' + chemin + '"/>' + points + etiquettes +
     '<line class="axe" x1="' + marge + '" y1="' + basAxe + '" x2="' + L + '" y2="' + basAxe + '"/>' +
@@ -5388,7 +5656,7 @@ function courbeEvolution(serie, club) {
   return (resume ? '<div style="margin-bottom:8px">' + resume + '</div>' : '') +
     '<div class="graphe-volees" data-volees="' + esc(JSON.stringify(donnees)) + '">' +
     '<div class="lecture" aria-live="polite"></div>' +
-    '<svg class="courbe" style="height:170px" viewBox="0 0 ' + L + ' ' + (H + 2) + '">' +
+    '<svg class="courbe" viewBox="0 0 ' + L + ' ' + (H + 2) + '">' +
     grilleY(ech, y, L, marge) +
     '<path class="aire" d="' + aire + '"/><path class="trait" d="' + chemin + '"/>' +
     '<path class="trait tendance" d="' + trace(glissante) + '"/>' + cercles +
@@ -5784,10 +6052,17 @@ function chargerMessages() {
     }
     el.innerHTML = r.messages.map(function (m) {
       const prive = m.portee !== 'Club';
+      // Un message privé dit toujours à qui il s'adresse : « pour vous » quand
+      // on le reçoit, le nom de l'archer quand on l'a écrit.
+      const puce = !prive
+        ? '<span class="puce">tout le club</span>'
+        : m.pourMoi
+          ? '<span class="puce orange">privé · pour vous</span>'
+          : '<span class="puce orange">privé · pour ' + esc(m.destinataireNom || '—') + '</span>';
       return '<div class="carte message' + (m.nouveau ? ' nouveau' : '') + '">' +
         '<div class="message-entete"><strong>' + esc(m.auteur) + '</strong>' +
         '<span class="muet">' + dateFr(m.date) + ' à ' + esc(m.heure) + '</span></div>' +
-        (prive ? '<span class="puce orange">message privé</span>' : '') +
+        puce +
         '<p class="message-texte">' + esc(m.texte).replace(/\n/g, '<br>') + '</p>' +
         (m.auteurId === r.moi || etat.estAdmin
           ? '<button class="lien-discret" onclick="supprimerMessage(\'' + m.id +
@@ -5867,6 +6142,46 @@ function annoncerCouleurs() {
   } catch (e) { /* sans conséquence */ }
 }
 
+/*
+ * Messages venus de la page d'accueil. Elle seule connaît les marges de
+ * l'écran (encoche, barre d'accueil), que le cadre ne peut pas mesurer, et
+ * elle seule garde la session d'une visite à l'autre.
+ */
+const ORIGINE_ACCUEIL = /^https:\/\/([a-z0-9-]+\.)*github\.io$|^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+let attenteJeton = null;
+
+function appliquerMarges(haut, bas) {
+  const r = document.documentElement.style;
+  const px = function (v) { return Math.max(0, Math.min(120, Number(v) || 0)) + 'px'; };
+  if (haut !== undefined && haut !== null) r.setProperty('--safe-haut', px(haut));
+  if (bas !== undefined && bas !== null) r.setProperty('--safe-bas', px(bas));
+  if (typeof majHauteurEntete === 'function') majHauteurEntete();
+}
+
+window.addEventListener('message', function (e) {
+  const m = e.data;
+  if (!m || m.arc !== true || !ORIGINE_ACCUEIL.test(e.origin)) return;
+  if (m.type === 'marges') appliquerMarges(m.haut, m.bas);
+  else if (m.type === 'jeton' && attenteJeton) attenteJeton(m.valeur || null);
+});
+
+/** Demande à la page d'accueil la session qu'elle garde, s'il y en a une. */
+function jetonDeLaPageAccueil(delai) {
+  return new Promise(function (resoudre) {
+    if (window.top === window) { resoudre(null); return; }
+    let fini = false;
+    const fin = function (v) {
+      if (fini) return;
+      fini = true;
+      attenteJeton = null;
+      resoudre(v || null);
+    };
+    attenteJeton = fin;
+    if (!versPageAccueil({ type: 'demanderJeton' })) { fin(null); return; }
+    setTimeout(function () { fin(null); }, delai || 1500);
+  });
+}
+
 /** Pastille sur l'icône : nombre de messages non lus. */
 function pastilleAppareil(nombre) {
   const n = Number(nombre) || 0;
@@ -5936,7 +6251,16 @@ function surveillerMessages(initial) {
     }).catch(function () { /* sans conséquence */ });
   };
   etat.minuteurCompetition = setInterval(guetterCompetition, 60000);
-  etat.minuteurMessages = setInterval(verifier, 60000);
+  // Toutes les 30 secondes application ouverte : un message arrive donc en une
+  // demi-minute au plus. Rien n'est demandé tant qu'elle est en arrière-plan,
+  // et le retour à l'écran déclenche une vérification immédiate.
+  etat.minuteurMessages = setInterval(verifier, 30000);
+  if (!etat.ecouteRetour) {
+    etat.ecouteRetour = true;
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) verifier();
+    });
+  }
   // Le démarrage apporte déjà le premier décompte : inutile de le redemander.
   if (initial) traiter(initial); else verifier();
 }
@@ -6700,30 +7024,45 @@ function reporterMotDePasse() {
 /* ---------- Amorçage ---------- */
 
 (function () {
-  // Un lien d'accès direct porte le jeton dans son adresse : c'est le seul
-  // moyen fiable de rester connecté, la mémoire du navigateur étant perdue
-  // d'une visite à l'autre dans le cadre où Google affiche l'application.
-  const direct = typeof JETON_INITIAL === 'string' ? JETON_INITIAL : '';
-  const memorise = direct || jetonMemorise();
-  if (!memorise) return;
-
-  jeton = memorise;
-  if (direct) memoriserJeton(direct, true);
-  // Pas de vérification préalable : le démarrage contrôle lui-même la session,
-  // ce qui économise un aller-retour complet avec le serveur.
-  document.getElementById('ecranConnexion').style.display = 'none';
-  // Affichage immédiat avec la dernière réponse connue, s'il y en a une.
-  const garde = demarrageMemorise();
-  if (garde) {
-    try {
-      appliquerDemarrage(garde, true);
-    } catch (e) {
-      console.warn('Affichage immédiat impossible : ' + (e && e.message));
+  function ouvrirAvec(memorise, aMemoriser) {
+    jeton = memorise;
+    if (aMemoriser) memoriserJeton(memorise, true);
+    // Pas de vérification préalable : le démarrage contrôle lui-même la session,
+    // ce qui économise un aller-retour complet avec le serveur.
+    document.getElementById('ecranConnexion').style.display = 'none';
+    // Affichage immédiat avec la dernière réponse connue, s'il y en a une.
+    const garde = demarrageMemorise();
+    if (garde) {
+      try {
+        appliquerDemarrage(garde, true);
+      } catch (e) {
+        console.warn('Affichage immédiat impossible : ' + (e && e.message));
+        document.getElementById('ecranChargement').style.display = '';
+      }
+    } else {
       document.getElementById('ecranChargement').style.display = '';
     }
-  } else {
-    document.getElementById('ecranChargement').style.display = '';
+    demarrer();
   }
-  demarrer();
+
+  // Un lien d'accès direct porte le jeton dans son adresse ; sinon la mémoire
+  // de ce cadre, perdue d'une visite à l'autre puisque Google en change
+  // l'adresse à chaque fois.
+  const direct = typeof JETON_INITIAL === 'string' ? JETON_INITIAL : '';
+  const memorise = direct || jetonMemorise();
+  if (memorise) { ouvrirAvec(memorise, !!direct); return; }
+
+  // Rien ici : la page d'accueil garde peut-être la session cochée
+  // « Rester connecté ». On lui laisse un instant pour répondre plutôt que
+  // d'afficher l'écran de connexion pour le reprendre aussitôt.
+  if (window.top === window) return;
+  const connexion = document.getElementById('ecranConnexion');
+  connexion.style.display = 'none';
+  document.getElementById('ecranChargement').style.display = '';
+  jetonDeLaPageAccueil(1500).then(function (v) {
+    if (v) { ouvrirAvec(v, false); return; }
+    document.getElementById('ecranChargement').style.display = 'none';
+    connexion.style.display = '';
+  });
 })();
 </script>

@@ -18,6 +18,9 @@
     --vert-fond: #e6f1ea;
     --rayon: 16px;
     --ombre: 0 1px 2px rgba(16, 32, 27, .05), 0 10px 28px rgba(16, 32, 27, .06);
+    /* Marges d'écran du téléphone. Dans le cadre, env() vaut toujours zéro :
+       la page d'accueil mesure les vraies valeurs et les transmet ici. */
+    --safe-haut: env(safe-area-inset-top, 0px);
     --safe-bas: env(safe-area-inset-bottom, 0px);
 
     /* Couronnes du blason — identiques en clair et en sombre. */
@@ -87,11 +90,20 @@
   svg { display: block; }
 
   /* ---------- Structure ---------- */
+  /*
+   * L'entête remonte sous l'heure du téléphone : la bande d'écran y est
+   * assombrie en dégradé, ce qui détache l'heure et le réseau du vert sans
+   * qu'une barre de couleur ne vienne couper l'application en deux.
+   */
   header.app {
     position: sticky; top: 0; z-index: 20;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-fort) 100%);
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, .62) 0,
+        rgba(0, 0, 0, .34) var(--safe-haut),
+        rgba(0, 0, 0, 0) calc(var(--safe-haut) + 16px)),
+      linear-gradient(135deg, var(--accent) 0%, var(--accent-fort) 100%);
     color: #fff;
-    padding: calc(13px + env(safe-area-inset-top, 0px)) 16px 13px;
+    padding: calc(16px + var(--safe-haut)) 16px 15px;
     display: flex; align-items: center; gap: 12px;
   }
   header.app .titres h1 { font-size: 18px; }
@@ -297,7 +309,7 @@
   /* Loupe de visée : flotte au-dessus de la page, jamais sous le doigt. */
   .loupe {
     position: fixed; z-index: 45; left: 50%; transform: translateX(-50%);
-    top: calc(74px + env(safe-area-inset-top, 0px));
+    top: calc(74px + var(--safe-haut));
     background: var(--carte); border: 1px solid var(--trait); border-radius: 16px;
     padding: 8px 8px 6px; box-shadow: 0 8px 28px rgba(0,0,0,.28);
     pointer-events: none; width: min(230px, 62vw);
@@ -364,7 +376,7 @@
   .vue-volee {
     position: fixed; inset: 0; z-index: 45; background: var(--fond);
     display: flex; flex-direction: column; overflow-y: auto;
-    padding: calc(10px + env(safe-area-inset-top, 0px)) 14px calc(12px + var(--safe-bas));
+    padding: calc(10px + var(--safe-haut)) 14px calc(12px + var(--safe-bas));
     -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   }
   .vue-volee[hidden] { display: none; }
@@ -532,13 +544,15 @@
   .barre { height: 7px; background: var(--trait); border-radius: 4px; overflow: hidden; margin-top: 7px; }
   .barre > span { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 
-  svg.courbe { width: 100%; height: 130px; overflow: visible; }
+  /* La zone de lecture occupe la largeur disponible, sa hauteur suit :
+     un graphique trop plat écrase les écarts qu'on cherche justement à voir. */
+  svg.courbe { width: 100%; height: clamp(150px, 42vw, 210px); overflow: visible; }
   svg.courbe .aire { fill: var(--accent); opacity: .12; }
   svg.courbe .trait { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
   svg.courbe .pt { fill: var(--accent); }
   svg.courbe .axe { stroke: var(--trait); stroke-width: 1; }
   svg.courbe .grille { stroke: var(--trait); stroke-width: .6; stroke-dasharray: 2 3; }
-  svg.courbe .graduation { font-size: 8.5px; fill: var(--encre-doux); }
+  svg.courbe .graduation { font-size: 9.5px; fill: var(--encre-doux); }
   svg.courbe .curseur { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 3 2; }
 
   .graphe-volees { touch-action: pan-y; }
@@ -550,7 +564,7 @@
 
   .ligne .nom .etoile { width: 15px; height: 15px; display: inline-block; vertical-align: -2px; margin-right: 5px; }
   svg.courbe .barre-volee { fill: var(--accent-clair); stroke: var(--accent); stroke-width: .8; }
-  svg.courbe text { font-size: 10px; fill: var(--encre-doux); }
+  svg.courbe text { font-size: 11px; fill: var(--encre-doux); }
 
   /* ---------- Flèches de progression ---------- */
   .fleche-ligne { display: flex; align-items: center; gap: 11px; padding: 9px 0; }
@@ -710,7 +724,7 @@
     .grille-3 { gap: 14px; }
     .stat .valeur { font-size: 26px; }
     svg.cible { max-width: 380px; }
-    svg.courbe { height: 170px; }
+    svg.courbe { height: 240px; }
 
     /* Sur grand écran, les onglets prennent place dans le bandeau supérieur,
        Profil compris : le bouton de l'entête n'a plus lieu d'être. */
@@ -748,6 +762,77 @@
   /* ---------- Graphiques à mesures, reliés au blason ---------- */
   .criteres.mesures { margin-bottom: 6px; }
   .criteres.mesures button { padding: 5px 11px; font-size: 12.5px; }
+
+  /* Pastille à menu : le libellé ouvre le graphique, le chevron déroule les
+     variantes de la même mesure (pourcentage ou nombre de flèches). */
+  .pilule-menu { position: relative; display: inline-flex; flex: 0 0 auto; }
+  .pilule-menu > button { padding-right: 25px !important; }
+  .pilule-menu::after {
+    content: '▾'; position: absolute; right: 9px; top: 50%;
+    transform: translateY(-50%); font-size: 10px; pointer-events: none;
+    color: var(--encre-doux);
+  }
+  .pilule-menu.actif::after { color: #fff; }
+  .pilule-menu select {
+    position: absolute; right: 0; top: 0; height: 100%; width: 25px;
+    opacity: 0; border: 0; padding: 0; margin: 0; background: none;
+    -webkit-appearance: none; appearance: none;
+  }
+
+  /* Interrupteur « Superposer » : plusieurs mesures sur le même graphique. */
+  .barre-graphe {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 8px;
+  }
+  .bascule { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px;
+    color: var(--encre-doux); font-weight: 600; flex: 0 0 auto; }
+  .bascule input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .bascule .piste {
+    width: 38px; height: 22px; border-radius: 999px; background: var(--trait);
+    position: relative; transition: background .16s;
+  }
+  .bascule .piste::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    transition: transform .16s;
+  }
+  .bascule input:checked + .piste { background: var(--accent); }
+  .bascule input:checked + .piste::after { transform: translateX(16px); }
+
+  /* Curseur de sélection : séance et période se choisissent au doigt, avec un
+     point de repère par position. */
+  .curseur-choix { margin-bottom: 10px; }
+  .curseur-choix .valeur-choix { font-weight: 650; font-size: 14px; }
+  .curseur-choix input[type=range] {
+    width: 100%; margin: 4px 0 0; -webkit-appearance: none; appearance: none;
+    background: none; height: 26px;
+  }
+  .curseur-choix input[type=range]::-webkit-slider-runnable-track {
+    height: 5px; border-radius: 999px; background: var(--trait);
+  }
+  .curseur-choix input[type=range]::-moz-range-track {
+    height: 5px; border-radius: 999px; background: var(--trait);
+  }
+  .curseur-choix input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); border: 3px solid var(--carte);
+    box-shadow: 0 1px 4px rgba(0,0,0,.3); margin-top: -9px;
+  }
+  .curseur-choix input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+    border: 3px solid var(--carte); box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  }
+  .curseur-choix .reperes {
+    display: flex; justify-content: space-between; padding: 0 9px; margin-top: -3px;
+  }
+  .curseur-choix .reperes span {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--trait);
+  }
+  .curseur-choix .reperes span.ici { background: var(--accent); }
+  .curseur-choix .bornes {
+    display: flex; justify-content: space-between; font-size: 11.5px;
+    color: var(--encre-doux); margin-top: 2px;
+  }
   svg.cible .impact { transition: opacity .12s; }
   svg.cible .impact.eteint { opacity: .07; }
   .filtre-impacts svg.cible .impact:not(.eteint) { stroke: var(--accent); stroke-width: .5; }
@@ -763,7 +848,7 @@
 
   .fenetre-reglages {
     position: fixed; inset: 0; z-index: 46; display: flex; flex-direction: column;
-    background: var(--fond); padding-top: env(safe-area-inset-top, 0px);
+    background: var(--fond); padding-top: var(--safe-haut);
   }
   .fenetre-reglages .fr-entete {
     display: flex; align-items: center; gap: 10px; padding: 12px 14px;
@@ -776,7 +861,7 @@
   .fenetre-reglages .fr-corps > * { max-width: 620px; margin-left: auto; margin-right: auto; }
   .fenetre-reglages .fr-actions {
     display: flex; gap: 10px; padding: 12px 14px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(12px + var(--safe-bas));
     border-top: 1px solid var(--trait); background: var(--carte);
   }
   .fenetre-reglages .fr-actions button { flex: 1; }

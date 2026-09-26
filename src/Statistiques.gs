@@ -272,6 +272,14 @@ function analysePartie_(s, volees) {
     dix: valeurs.length ? arrondi_(100 * compte(function (x) { return x === 10; }) / valeurs.length, 1) : null,
     jaunes: valeurs.length ? arrondi_(100 * compte(function (x) { return x >= 9; }) / valeurs.length, 1) : null,
     manquees: valeurs.length ? compte(function (x) { return x === 0; }) : null,
+    // Comptages bruts : les graphiques en pourcentage proposent aussi le
+    // nombre de flèches, « combien de 10 ai-je mis ? » étant la vraie question.
+    nb10: compte(function (x) { return x === 10; }),
+    nb9: compte(function (x) { return x === 9; }),
+    nbJaunes: compte(function (x) { return x >= 9; }),
+    nbRouges: compte(function (x) { return x === 7 || x === 8; }),
+    pctRouges: valeurs.length ? arrondi_(100 * compte(function (x) { return x === 7 || x === 8; }) / valeurs.length, 1) : null,
+    pctManquees: valeurs.length ? arrondi_(100 * compte(function (x) { return x === 0; }) / valeurs.length, 1) : null,
     ecartCentre: g ? g.ecartCentre : null,
     centreX: g ? g.centreX : null,
     centreY: g ? g.centreY : null,

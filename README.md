@@ -100,10 +100,12 @@ L’onglet **`Utilisateurs`** tient un compte par archer :
 - Le menu **🏹 ▸ Réinitialiser un mot de passe…** fait la même chose depuis le Sheet.
 - La saisie ignore la casse, les accents et les espaces : `dupont marie` ouvre le
   compte `DUPONTMarie`. Les homonymes reçoivent un suffixe (`DUPONTMarie2`).
-- **Session** : la connexion vaut pour la visite en cours. La case « Rester connecté »
-  tente de la mémoriser, mais **Google affiche l’application dans un cadre dont
-  l’adresse change à chaque visite** : la mémoire du navigateur y est perdue d’une
-  fois sur l’autre. C’est une limite du support, pas un réglage.
+- **Session** : Google affiche l’application dans un cadre dont l’adresse change à
+  chaque visite — la mémoire du navigateur y est perdue d’une fois sur l’autre. La
+  case **« Rester connecté »** confie donc la session à la **page d’accueil du club**
+  (celle de GitHub Pages), qui garde toujours la même adresse : c’est elle qui rend la
+  session à l’ouverture suivante. La case ne fonctionne qu’à travers cette page — par
+  l’adresse Google directe, la session reste perdue.
 - **Lien d’accès direct** : la vraie solution pour un raccourci sur téléphone.
   Onglet **Profil ▸ Mon lien d’accès direct** : l’archer obtient une adresse
   personnelle qui ouvre l’application **déjà connectée**, à mettre en signet ou sur
@@ -350,16 +352,25 @@ quoi, en dépliant la ligne. Les réponses vivent dans l’onglet `Disponibilit�
 
 ### Messagerie
 
-Onglet **Messages** : un fil commun au club. L’encadrement peut adresser un message
-à **un archer en particulier** ; chacun peut supprimer ses propres messages, un
+Onglet **Messages** : un fil commun au club. **Chaque archer** peut adresser un
+message à **un archer en particulier** — le destinataire se choisit au-dessus du texte,
+*Tout le club* en premier. Un message privé n’est visible que de son auteur et de son
+destinataire, et l’indique : *privé · pour vous* quand on le reçoit, *privé · pour
+Paul DURAND* quand on l’a écrit. Chacun peut supprimer ses propres messages, un
 administrateur ceux de tout le monde.
+
+**Délai** : application ouverte, un message arrive en **30 secondes au plus** (elle
+interroge le serveur toutes les 30 s, et immédiatement au retour à l’écran) ; la
+notification du téléphone et la pastille suivent dans la foulée. **L’email, lui, part à
+la seconde où le message est publié** — c’est le seul canal qui atteigne un téléphone
+dont l’application est fermée.
 
 #### Comment les archers sont prévenus
 
 | Canal | Quand | Portée |
 | --- | --- | --- |
 | Fenêtre à l’ouverture | à chaque connexion, s’il y a du nouveau | toujours |
-| Pastille rouge + bandeau | pendant la session, vérification chaque minute | toujours |
+| Pastille rouge + bandeau | pendant la session, vérification toutes les 30 s | toujours |
 | **Notification du téléphone** | pendant que l’application tourne | iPhone : raccourci installé depuis la page d’accueil du club |
 | **Pastille sur l’icône** | idem | idem |
 | **Email** | à la publication du message | **même téléphone fermé** |
@@ -518,8 +529,8 @@ Trois portées, réglables en haut de l’écran :
 | Filtre | Effet |
 | --- | --- |
 | **Archer** | consulter les statistiques d’un autre archer (tous, si les scores sont partagés) |
-| **Séance** | déplie le détail complet de cette partie, volées comprises |
-| **Période** | 30 jours, 3 mois, 12 mois, ou deux dates précises |
+| **Séance** | **curseur** à un point de repère par partie, de la plus ancienne à la plus récente ; déplie le détail complet de la partie choisie |
+| **Période** | **curseur** : depuis toujours, 12 mois, 3 mois, 30 jours, ou deux dates précises |
 | **Discipline / Distance / Lieu** | affinent la sélection |
 
 Sans filtre, les statistiques portent sur toutes les parties.
@@ -537,6 +548,19 @@ Sans filtre, les statistiques portent sur toutes les parties.
   surface moyens, meilleure volée et meilleure partie ;
 - **Au fil des volées** : moyenne par flèche selon le numéro de volée (mise en route,
   fatigue en fin de partie) ;
+
+#### Lire plusieurs mesures à la fois
+
+- l’interrupteur **Superposer**, au-dessus des pastilles, met **plusieurs mesures sur
+  le même dessin** : on touche ensuite celles qu’on veut réunir. Les unités n’étant pas
+  comparables (des points, des centimètres, des pourcentages), chaque courbe garde sa
+  propre échelle — le bas du graphique est sa plus faible valeur, le haut sa plus
+  forte. On compare ainsi les **formes** ; à la lecture, chaque point affiche sa
+  **valeur réelle**, dans son unité ;
+- les pastilles en pourcentage portent un **petit menu** (le chevron ▾) : *% jaunes*
+  donne aussi le **nombre de 9 et 10**, le **nombre de 10** seul et le **nombre de 9**
+  seul ; *% de 10*, *% rouges* et *Manquées* proposent de même la part ou le nombre de
+  flèches. Le choix vaut pour les parties comme pour les volées d’une séance ;
 - sous la carte des impacts, les mesures **suivent le curseur** : centrage, périmètre
   par volée et dispersion de la partie lue, avec son score et son % de jaunes. Un
   **simple toucher** sur un point ouvre la partie ;
@@ -674,15 +698,10 @@ fichier à jour en début de saison.
 Le logo du club est **intégré au projet** (`src/Logo.html`, en base64) : il s’affiche
 à la connexion et dans l’en-tête, sans hébergement externe.
 
-L’**icône du raccourci** sur l’écran d’accueil n’est pas personnalisable : iOS lit
-l’`apple-touch-icon` de la page que Google place autour de l’application, sur laquelle
-le club n’a pas la main. Les contournements possibles — page d’enrobage sur Google
-Sites ou sur un hébergement extérieur — ont été écartés, l’ergonomie n’en valant pas
-la peine.
-
-Le raccourci porte donc une icône générique, et la ligne « URL de l’icône » de l’onglet
-Paramètres doit rester **vide**. Le logo du club reste présent là où il compte :
-écran de connexion et bandeau supérieur de l’application.
+L’**icône du raccourci** sur l’écran d’accueil vient de la **page d’accueil du club**
+(`index.html`, publiée par GitHub Pages) : c’est elle qui déclare l’`apple-touch-icon`
+et le manifeste, ce que la page de Google ne fait pas. Le raccourci doit donc être créé
+depuis l’adresse GitHub Pages, jamais depuis l’adresse Google directe.
 
 Pour régénérer les images après un changement de logo : remplacer
 `icone/logo-club.png`, puis relancer le script noté dans le README de ce dossier.
@@ -695,6 +714,11 @@ L’application détecte le format de l’écran et s’y adapte :
 
 - **téléphone** : une seule colonne, barre d’onglets en bas, cibles et graphiques
   à la largeur de l’écran ;
+- **marges de l’écran** (encoche, barre d’accueil) : un cadre ne peut pas les mesurer.
+  La **page d’accueil du club** les mesure et les transmet à l’application, qui étire
+  elle-même son en-tête sous l’heure du téléphone — assombri en dégradé pour détacher
+  l’heure et le réseau — et sa barre d’onglets jusqu’au bas de l’écran. Plus aucune
+  bande de couleur autour de l’image ;
 - **ordinateur ou tablette en paysage** (à partir de 900 px) : **les onglets passent
   dans le bandeau supérieur**, page plus large,
   cible et volées côte à côte dans le détail d’une séance, carte des impacts d’un
