@@ -347,17 +347,31 @@ administrateur ceux de tout le monde.
 | --- | --- | --- |
 | Fenêtre à l’ouverture | à chaque connexion, s’il y a du nouveau | toujours |
 | Pastille rouge + bandeau | pendant la session, vérification chaque minute | toujours |
-| Notification du navigateur | pendant que l’application est ouverte | ordinateur seulement — **jamais sur iPhone** |
+| **Notification du téléphone** | pendant que l’application tourne | iPhone : raccourci installé depuis la page d’accueil du club |
+| **Pastille sur l’icône** | idem | idem |
 | **Email** | à la publication du message | **même téléphone fermé** |
 
-**Une application Apps Script ne peut pas envoyer de notification « poussée »** :
-elle s’affiche dans un cadre qui interdit les *service workers*, socle technique des
-notifications de téléphone. Sur **iPhone**, Safari les réserve de surcroît aux
-applications installées : la demande y est toujours refusée, et l’application ne
-propose donc même plus le bouton — elle explique pourquoi à la place.
+#### Notification et pastille sur le téléphone
 
-L’**email** est le seul canal qui atteint un archer dont l’application est fermée —
-et il arrive bien, lui, comme une notification sur le téléphone.
+Elles passent par la **page d’accueil du club** (celle de GitHub Pages) : c’est elle
+qui est installée sur l’écran d’accueil, donc la seule à pouvoir afficher une
+notification et poser une pastille sur l’icône. L’application, qui vit dans son cadre,
+lui transmet ce qu’il y a à montrer ; la page ne lit que les messages venus de Google.
+
+Pour en profiter, l’archer doit :
+
+1. ouvrir la **page d’accueil du club** (pas l’adresse Apps Script) ;
+2. *Partager ▸ Sur l’écran d’accueil* ;
+3. répondre **Activer** au bandeau « Être prévenu des nouveaux messages ? » (une seule
+   fois ; *Plus tard* ne le repropose plus).
+
+**Limite à connaître** : la notification part quand l’application **tourne** — au
+premier plan, ou quelques minutes après être passée en arrière-plan. Un téléphone
+rangé depuis une heure ne sonnera pas. Pour ça, il faudrait un service d’envoi
+extérieur, qu’Apps Script ne sait pas faire signer.
+
+L’**email** reste donc le seul canal qui atteint à coup sûr un archer dont
+l’application est fermée — et il arrive, lui aussi, comme une notification.
 
 Réglage dans l’onglet **Paramètres**, ligne « Notifications messages » :
 

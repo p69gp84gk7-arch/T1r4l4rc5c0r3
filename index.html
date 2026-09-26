@@ -39,10 +39,33 @@
     }
     .secours.visible { display: flex; }
     .secours a { color: #fff; font-weight: 600; }
+
+    /* Bandeau d'autorisation des notifications : il ne s'affiche qu'une fois,
+       et seulement si le téléphone peut les afficher. */
+    .notifs {
+      position: fixed; left: 0; right: 0; top: 0; z-index: 3; display: none;
+      align-items: center; gap: 10px; padding: 10px 14px;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px));
+      background: #15594a; color: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25);
+      font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .notifs.visible { display: flex; }
+    .notifs p { margin: 0; flex: 1; }
+    .notifs button {
+      border: 0; border-radius: 9px; padding: 8px 12px; font-size: 14px; font-weight: 600;
+      background: #fff; color: #15594a;
+    }
+    .notifs button.plus-tard { background: transparent; color: #fff; font-weight: 500; }
   </style>
 </head>
 <body>
   <iframe id="app" title="Espace archers" allow="clipboard-write"></iframe>
+
+  <div class="notifs" id="notifs">
+    <p>Être prévenu des nouveaux messages du club sur ce téléphone ?</p>
+    <button type="button" id="notifsOui">Activer</button>
+    <button type="button" class="plus-tard" id="notifsNon">Plus tard</button>
+  </div>
 
   <div class="secours" id="secours">
     <p>L’application met du temps à répondre.<br>
@@ -61,6 +84,69 @@
 
     document.getElementById('lienDirect').href = adresse;
     cadre.src = adresse;
+
+    /* ------------------------------------------------------------------
+       L'application vit dans le cadre, mais c'est CETTE page qui est
+       installée sur l'écran d'accueil : elle seule peut poser la pastille sur
+       l'icône et afficher une notification. L'application lui envoie ce qu'il
+       y a à montrer ; on n'écoute que les messages venus de Google.
+       ------------------------------------------------------------------ */
+    function sourceFiable(origine) {
+      return /^https:\/\/([a-z0-9-]+\.)*(googleusercontent\.com|google\.com)$/.test(origine);
+    }
+
+    function posterPastille(nombre) {
+      try {
+        if (nombre > 0 && navigator.setAppBadge) navigator.setAppBadge(nombre);
+        else if (navigator.clearAppBadge) navigator.clearAppBadge();
+      } catch (e) { /* téléphone sans pastille : sans conséquence */ }
+    }
+
+    function afficherNotification(titre, corps) {
+      try {
+        if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+        new Notification(titre || 'Arc Club Luchonnais', {
+          body: corps || '', tag: 'arc-club', icon: 'icone/icone-192.png', badge: 'icone/icone-192.png',
+        });
+      } catch (e) { /* refusé : la pastille suffira */ }
+    }
+
+    var bandeauNotifs = document.getElementById('notifs');
+    function proposerNotifications() {
+      try {
+        if (localStorage.getItem('arc.notifs') === 'non') return;
+      } catch (e) { /* stockage indisponible */ }
+      if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+      // Hors écran d'accueil, iOS n'affiche aucune notification : inutile de demander.
+      var installee = window.navigator.standalone === true ||
+        (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+      var iphone = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (iphone && !installee) return;
+      bandeauNotifs.classList.add('visible');
+    }
+
+    document.getElementById('notifsOui').addEventListener('click', function () {
+      bandeauNotifs.classList.remove('visible');
+      try {
+        var d = Notification.requestPermission();
+        if (d && d.then) d.then(function () { /* rien de plus à faire */ });
+      } catch (e) { /* refus silencieux */ }
+    });
+    document.getElementById('notifsNon').addEventListener('click', function () {
+      bandeauNotifs.classList.remove('visible');
+      try { localStorage.setItem('arc.notifs', 'non'); } catch (e) { /* tant pis */ }
+    });
+
+    window.addEventListener('message', function (e) {
+      var m = e.data;
+      if (!m || m.arc !== true || !sourceFiable(e.origin)) return;
+      if (m.type === 'pastille') {
+        posterPastille(Number(m.nombre) || 0);
+        proposerNotifications();
+      } else if (m.type === 'notification') {
+        afficherNotification(m.titre, m.corps);
+      }
+    });
 
     var chargee = false;
     cadre.addEventListener('load', function () { chargee = true; });

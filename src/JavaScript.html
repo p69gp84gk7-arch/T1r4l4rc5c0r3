@@ -5818,9 +5818,37 @@ function supprimerMessage(id) {
 /** Pastille de l'onglet Messages. */
 function majBadgeMessages(nombre) {
   const badge = document.getElementById('badgeMessages');
-  if (!badge) return;
-  badge.textContent = nombre > 9 ? '9+' : String(nombre);
-  badge.hidden = !nombre;
+  if (badge) {
+    badge.textContent = nombre > 9 ? '9+' : String(nombre);
+    badge.hidden = !nombre;
+  }
+  pastilleAppareil(nombre);
+}
+
+/*
+ * L'application tourne dans le cadre de la page d'accueil du club. C'est cette
+ * page-là qui est installée sur l'écran d'accueil : elle seule peut poser la
+ * pastille sur l'icône et afficher une notification du téléphone. On lui
+ * transmet donc ce qu'il y a à montrer.
+ */
+function versPageAccueil(message) {
+  try {
+    if (window.top === window) return false;
+    window.top.postMessage(Object.assign({ arc: true }, message), '*');
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Pastille sur l'icône : nombre de messages non lus. */
+function pastilleAppareil(nombre) {
+  const n = Number(nombre) || 0;
+  if (versPageAccueil({ type: 'pastille', nombre: n })) return;
+  try {
+    if (n && navigator.setAppBadge) navigator.setAppBadge(n);
+    else if (navigator.clearAppBadge) navigator.clearAppBadge();
+  } catch (e) { /* non géré par ce téléphone */ }
 }
 
 /**
@@ -5896,12 +5924,15 @@ function surveillerMessages(initial) {
  * le seul canal qui atteint un téléphone fermé.
  */
 function notificationSysteme(titre, corps) {
+  // Dans le cadre, la notification est affichée par la page d'accueil : c'est
+  // elle qui porte l'autorisation du téléphone.
+  if (versPageAccueil({ type: 'notification', titre: titre, corps: corps })) return;
   try {
     if (typeof Notification === 'undefined') return;
     if (Notification.permission !== 'granted') return;
     new Notification(titre, { body: corps, tag: 'tirarc-message' });
   } catch (e) {
-    /* le cadre interdit les notifications : la pastille suffira */
+    /* notifications refusées : la pastille suffira */
   }
 }
 
@@ -5917,6 +5948,9 @@ function surIphone() {
 }
 
 function notificationsPossibles() {
+  // Dans le cadre, c'est la page d'accueil qui demande l'autorisation : elle
+  // affiche son propre bandeau, l'application n'a rien à proposer.
+  if (window.top !== window) return false;
   return typeof Notification !== 'undefined' &&
     Notification.permission === 'default' && !surIphone();
 }
