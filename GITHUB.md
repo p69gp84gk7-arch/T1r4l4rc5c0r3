@@ -28,30 +28,30 @@ classeur Google Sheets.
 
 ## Étape 2 — Publier sur GitHub
 
-### Le plus simple : GitHub Desktop (sans terminal)
+Le dépôt distant est déjà relié au dossier :
+<https://github.com/p69gp84gk7-arch/T1r4l4rc5c0r3> (privé, vide pour l'instant).
+La branche locale s'appelle `main`, comme sur GitHub.
 
-1. Créez un compte sur <https://github.com> (gratuit).
-2. Téléchargez **GitHub Desktop** : <https://desktop.github.com>, installez-le et
-   connectez-vous avec ce compte.
-3. Menu **File ▸ Add Local Repository…**, choisissez le dossier :
-   `~/Library/Mobile Documents/com~apple~CloudDocs/Tir à l'arc`
-4. Cliquez sur **Publish repository**.
-   - Nom proposé : `tir-a-l-arc` (ou ce que vous voulez) ;
-   - **laissez cochée la case « Keep this code private »** : le dépôt reste privé.
-5. C'est publié. Ensuite, à chaque modification : GitHub Desktop affiche les
-   changements, vous écrivez une phrase (« Correction du blason »), **Commit**, puis
-   **Push origin**.
+### Avec GitHub Desktop
 
-### Ou en ligne de commande
+1. Téléchargez **GitHub Desktop** : <https://desktop.github.com>, installez-le, puis
+   connectez-vous avec le compte **p69gp84gk7-arch**.
+2. Menu **File ▸ Add Local Repository…** ▸ **Choose…** et sélectionnez, dans la barre
+   latérale, **iCloud Drive ▸ Tir à l'arc**. Cliquez sur **Add Repository**.
+   - N'utilisez pas *Publish repository* : le dépôt existe déjà, GitHub Desktop le
+     reconnaît tout seul.
+3. En haut, le bouton **Publish branch** (ou **Push origin**) envoie tout : un clic.
 
-```bash
-brew install gh
-gh auth login
-cd ~/Library/Mobile\ Documents/com~apple~CloudDocs/Tir\ à\ l\'arc
-gh repo create tir-a-l-arc --private --source=. --push
-```
+### La routine, ensuite
 
----
+À chaque modification, GitHub Desktop les affiche dans la colonne de gauche :
+
+1. écrivez une phrase en bas à gauche (« Correction du blason ») ;
+2. **Commit to main** ;
+3. **Push origin**.
+
+Deux clics, et l'historique est en ligne. Si les modifications ont été faites par
+Claude, le commit est déjà écrit : il ne reste que **Push origin**.
 
 ## Étape 3 — Relier le dossier à Apps Script (fini le copier-coller)
 
