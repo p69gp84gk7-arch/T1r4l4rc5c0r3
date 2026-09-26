@@ -479,6 +479,12 @@ Sous la liste des parties, le sélecteur **Mes parties / Tout le club** affiche 
 les parties enregistrées par les membres et l’encadrement, nom de l’archer en tête.
 Chaque ligne s’ouvre en détail comme les autres.
 
+Sur la **page d’accueil**, sous les trois compteurs, un encadré **Mon tir** reprend les
+six chiffres clés de l’analyse — % jaunes, % de 10, écart-type moyen, centrage,
+périmètre et surface par volée — avec la meilleure partie et un accès direct aux
+statistiques complètes. Le calcul est celui de l’onglet *Statistiques*, gardé en mémoire
+par le serveur : il ne ralentit pas l’ouverture.
+
 ### Progression (onglet *Progression*)
 
 En tête de la vue d’ensemble, la courbe **Évolution de la moyenne** retrace la
@@ -552,15 +558,18 @@ Sans filtre, les statistiques portent sur toutes les parties.
 #### Lire plusieurs mesures à la fois
 
 - l’interrupteur **Superposer**, au-dessus des pastilles, met **plusieurs mesures sur
-  le même dessin** : on touche ensuite celles qu’on veut réunir. Les unités n’étant pas
-  comparables (des points, des centimètres, des pourcentages), chaque courbe garde sa
-  propre échelle — le bas du graphique est sa plus faible valeur, le haut sa plus
-  forte. On compare ainsi les **formes** ; à la lecture, chaque point affiche sa
-  **valeur réelle**, dans son unité ;
-- les pastilles en pourcentage portent un **petit menu** (le chevron ▾) : *% jaunes*
-  donne aussi le **nombre de 9 et 10**, le **nombre de 10** seul et le **nombre de 9**
-  seul ; *% de 10*, *% rouges* et *Manquées* proposent de même la part ou le nombre de
-  flèches. Le choix vaut pour les parties comme pour les volées d’une séance ;
+  le même dessin** : on touche ensuite celles qu’on veut réunir ;
+  - **à deux mesures**, chacune garde son unité et reçoit **son propre axe vertical** —
+    la première à gauche, la seconde à droite, chacune dans sa couleur, rappelée dans
+    la légende. Les valeurs tracées sont les vraies ;
+  - **au-delà de deux**, faute de place pour plus de deux axes, chaque courbe est
+    ramenée à sa propre échelle (bas = sa plus faible valeur, haut = sa plus forte) :
+    on compare les **formes**, et la lecture affiche la **valeur réelle** de chaque point ;
+- les pastilles portent un **petit menu** (le chevron ▾) : *Score %* donne aussi le
+  **score en points** ; *% jaunes* donne le **nombre de 9 et 10**, le **nombre de 10**
+  seul et le **nombre de 9** seul ; *% de 10*, *% rouges* et *Manquées* proposent de
+  même la part ou le nombre de flèches. Le choix vaut pour les parties comme pour les
+  volées d’une séance ;
 - sous la carte des impacts, les mesures **suivent le curseur** : centrage, périmètre
   par volée et dispersion de la partie lue, avec son score et son % de jaunes. Un
   **simple toucher** sur un point ouvre la partie ;
@@ -718,7 +727,12 @@ L’application détecte le format de l’écran et s’y adapte :
   La **page d’accueil du club** les mesure et les transmet à l’application, qui étire
   elle-même son en-tête sous l’heure du téléphone — assombri en dégradé pour détacher
   l’heure et le réseau — et sa barre d’onglets jusqu’au bas de l’écran. Plus aucune
-  bande de couleur autour de l’image ;
+  bande de couleur autour de l’image. La mesure est **répétée** tant que l’application
+  n’a pas accusé réception (certains téléphones n’annoncent rien au lancement), et si
+  l’appareil n’annonce jamais rien, la **hauteur de l’écran** sert de repli : île
+  dynamique, encoche, ou bouton d’accueil. En dernier recours, **Profil ▸ Bords de
+  l’écran** laisse l’archer ajuster lui-même le haut et le bas ; le réglage reste sur
+  son appareil et *Revenir au réglage automatique* le rend à la mesure ;
 - **ordinateur ou tablette en paysage** (à partir de 900 px) : **les onglets passent
   dans le bandeau supérieur**, page plus large,
   cible et volées côte à côte dans le détail d’une séance, carte des impacts d’un

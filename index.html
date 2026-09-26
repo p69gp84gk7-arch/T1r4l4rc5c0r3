@@ -127,20 +127,68 @@
        ------------------------------------------------------------------ */
     var sondeHaut = document.getElementById('sondeHaut');
     var sondeBas = document.getElementById('sondeBas');
+    var CLE_MARGES = 'arc.marges';
 
-    function envoyerMarges() {
-      if (!cadre.contentWindow) return;
-      var installee = window.navigator.standalone === true ||
+    function installee() {
+      return window.navigator.standalone === true ||
         (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-      var haut = sondeHaut.offsetHeight;
-      // Depuis l'écran d'accueil, l'heure du téléphone se pose sur la page :
-      // même sans encoche déclarée, il lui faut de la place.
-      if (installee && haut < 20) haut = 20;
-      try {
-        cadre.contentWindow.postMessage(
-          { arc: true, type: 'marges', haut: haut, bas: sondeBas.offsetHeight }, '*');
-      } catch (e) { /* cadre pas encore prêt */ }
     }
+
+    /*
+     * Certains téléphones annoncent des marges nulles au lancement, le temps
+     * que l'écran s'installe, et quelques-uns ne les annoncent jamais. Depuis
+     * l'écran d'accueil, on se rabat alors sur la hauteur de l'écran, qui dit
+     * si l'appareil a une encoche ou une île.
+     */
+    function replis() {
+      if (!installee()) return { haut: 0, bas: 0 };
+      var h = Math.max(window.screen.height || 0, window.screen.width || 0);
+      if (h >= 850) return { haut: 59, bas: 34 };   // île dynamique
+      if (h >= 812) return { haut: 47, bas: 34 };   // encoche
+      return { haut: 20, bas: 0 };                  // bouton d'accueil
+    }
+
+    function reglage() {
+      try {
+        var o = JSON.parse(localStorage.getItem(CLE_MARGES) || 'null');
+        return o && typeof o === 'object' ? o : {};
+      } catch (e) { return {}; }
+    }
+
+    // On ne cesse de répéter les marges que lorsque l'application a confirmé
+    // les avoir reçues : au lancement, elle n'écoute pas encore.
+    var margesConfirmees = '';
+    var dernieresMarges = '';
+    function envoyerMarges(force) {
+      if (!cadre.contentWindow) return;
+      var secours = replis();
+      var mesureHaut = sondeHaut.offsetHeight || secours.haut;
+      var mesureBas = sondeBas.offsetHeight || secours.bas;
+      var r = reglage();
+      var msg = {
+        arc: true, type: 'marges',
+        haut: typeof r.haut === 'number' ? r.haut : mesureHaut,
+        bas: typeof r.bas === 'number' ? r.bas : mesureBas,
+        mesureHaut: mesureHaut, mesureBas: mesureBas,
+        regleHaut: typeof r.haut === 'number' ? r.haut : null,
+        regleBas: typeof r.bas === 'number' ? r.bas : null,
+      };
+      var signature = JSON.stringify(msg);
+      if (!force && signature === margesConfirmees) return;
+      dernieresMarges = signature;
+      try { cadre.contentWindow.postMessage(msg, '*'); } catch (e) { /* cadre pas prêt */ }
+    }
+
+    // L'écran met parfois un instant à déclarer ses marges : on revérifie.
+    function surveillerMarges() {
+      [0, 200, 600, 1500, 3000].forEach(function (d) { setTimeout(envoyerMarges, d); });
+    }
+    ['resize', 'orientationchange', 'pageshow', 'focus'].forEach(function (ev) {
+      window.addEventListener(ev, surveillerMarges);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) surveillerMarges();
+    });
 
     /* ------------------------------------------------------------------
        « Rester connecté » : l'adresse du cadre change à chaque visite, sa
@@ -208,7 +256,7 @@
       var m = e.data;
       if (!m || m.arc !== true || !sourceFiable(e.origin)) return;
       // L'application parle : elle est donc en place pour recevoir les marges.
-      envoyerMarges();
+      surveillerMarges();
       if (m.type === 'couleurs') {
         // L'application connaît le thème choisi par l'archer : on s'y accorde.
         if (m.haut) document.documentElement.style.setProperty('--haut', m.haut);
@@ -220,6 +268,17 @@
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute('content', m.bas);
         }
+      } else if (m.type === 'margesRecues') {
+        margesConfirmees = dernieresMarges;
+      } else if (m.type === 'reglageMarges') {
+        // Réglage manuel de l'archer : null remet la mesure automatique.
+        var courant = reglage();
+        if (m.haut === null || m.haut === undefined) delete courant.haut;
+        else courant.haut = Math.max(0, Math.min(120, Math.round(Number(m.haut) || 0)));
+        if (m.bas === null || m.bas === undefined) delete courant.bas;
+        else courant.bas = Math.max(0, Math.min(120, Math.round(Number(m.bas) || 0)));
+        try { localStorage.setItem(CLE_MARGES, JSON.stringify(courant)); } catch (e) {}
+        envoyerMarges(true);
       } else if (m.type === 'demanderJeton') {
         rendreSession(e.source, e.origin);
       } else if (m.type === 'jeton') {
@@ -233,9 +292,7 @@
     });
 
     var chargee = false;
-    cadre.addEventListener('load', function () { chargee = true; envoyerMarges(); });
-    window.addEventListener('resize', envoyerMarges);
-    window.addEventListener('orientationchange', function () { setTimeout(envoyerMarges, 250); });
+    cadre.addEventListener('load', function () { chargee = true; surveillerMarges(); });
 
     // Le secours n'apparaît que si le cadre n'a rien affiché au bout de 12 s.
     setTimeout(function () {

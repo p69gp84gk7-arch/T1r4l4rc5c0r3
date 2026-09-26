@@ -460,6 +460,10 @@ function rendreAccueil(d) {
     stat(p.moyenneFleche || 0, 'Moy./flèche') +
     '</div>';
 
+  // L'analyse du tir tient en six chiffres : ils ont leur place ici, sans
+  // qu'il faille aller les chercher dans l'onglet Statistiques.
+  if (p.nbScores) html += '<div id="analyseAccueil"></div>';
+
   if (d.alertes && d.alertes.length) {
     html += '<div class="titre-section"><h2>À régulariser</h2>' +
       '<span class="muet">' + d.alertes.length + '</span></div>';
@@ -520,6 +524,62 @@ function rendreAccueil(d) {
   }
 
   document.getElementById('accueilContenu').innerHTML = html;
+  if (p.nbScores) chargerAnalyseAccueil();
+}
+
+/**
+ * Analyse du tir sur la page d'accueil. Le calcul est le même que celui de
+ * l'onglet Statistiques, et le serveur le garde en mémoire : l'afficher ici ne
+ * coûte donc presque rien, et le résultat est conservé le temps de la session.
+ */
+function chargerAnalyseAccueil() {
+  const zone = document.getElementById('analyseAccueil');
+  const moi = etat.moi && etat.moi.id;
+  if (!zone || !moi) return;
+  if (etat.analyseAccueil) { zone.innerHTML = carteAnalyse(etat.analyseAccueil, moi); return; }
+  zone.innerHTML = '<div class="carte compacte"><div class="chargement">Analyse du tir…</div></div>';
+  // L'accueil est dessiné deux fois à l'ouverture (mémoire puis serveur) :
+  // un seul calcul suffit.
+  if (etat.analyseEnCours) return;
+  etat.analyseEnCours = true;
+  api('apiStatistiques', moi, {}).then(function (r) {
+    etat.analyseEnCours = false;
+    const ici = document.getElementById('analyseAccueil');
+    if (!ici) return;
+    if (!r.ok || !r.analyse) { ici.innerHTML = ''; return; }
+    etat.analyseAccueil = r;
+    ici.innerHTML = carteAnalyse(r, moi);
+  }).catch(function () {
+    etat.analyseEnCours = false;
+    const ici = document.getElementById('analyseAccueil');
+    if (ici) ici.innerHTML = '';
+  });
+}
+
+/** Les six chiffres clés du tir, avec un accès aux statistiques complètes. */
+function carteAnalyse(s, moiId) {
+  const an = s.analyse || {};
+  const cle = function (v, suffixe) {
+    return v === null || v === undefined || v === 0 ? '—' : v + (suffixe || '');
+  };
+  return '<div class="titre-section"><h2>Mon tir</h2>' +
+    '<span class="muet">' + s.nbParties + ' partie(s)</span></div>' +
+    '<div class="carte"><div class="grille-3">' +
+    stat(cle(an.jaunes, ' %'), '% jaunes (9-10)') +
+    stat(cle(an.dix, ' %'), '% de 10') +
+    stat(an.regularite === null || an.regularite === undefined ? '—' : an.regularite, 'Écart-type moy.') +
+    stat(cle(an.ecartCentre, ' cm'), 'Centrage moyen') +
+    stat(cle(an.perimetre, ' cm'), 'Périmètre / volée') +
+    stat(an.aire ? an.aire.toLocaleString('fr-FR') + ' cm²' : '—', 'Surface / volée') +
+    '</div>' +
+    (s.meilleurePartie
+      ? '<p class="muet" style="margin:10px 0 0">Meilleure partie : <strong>' +
+        s.meilleurePartie.score + '/' + s.meilleurePartie.max + '</strong> le ' +
+        dateFr(s.meilleurePartie.date) + '.</p>'
+      : '') +
+    '<div class="actions" style="margin:12px 0 0">' +
+    '<button type="button" class="secondaire" onclick="voirStats(\'' + esc(moiId) +
+    '\')">Toutes mes statistiques</button></div></div>';
 }
 
 function stat(valeur, libelle) {
@@ -4863,7 +4923,11 @@ function mesureCombinee(o) {
 
   const ref = choisies[0];
   const series = [];
-  choisies.forEach(function (m) {
+  // Deux mesures : chacune garde son unité et reçoit son propre axe vertical,
+  // à gauche et à droite — bien plus lisible qu'une échelle commune de 0 à 100.
+  const deuxAxes = choisies.length === 2;
+
+  choisies.forEach(function (m, iAxe) {
     m.series.forEach(function (s) {
       const vals = s.points.filter(function (p) { return p && p.v !== null && p.v !== undefined; })
         .map(function (p) { return p.v; });
@@ -4872,10 +4936,13 @@ function mesureCombinee(o) {
       const etendue = (Math.max.apply(null, vals) - mini) || 1;
       series.push({
         nom: m.libelle + (m.series.length > 1 && s.nom ? ' · ' + s.nom : ''),
+        axe: iAxe,
         points: s.points.map(function (p) {
           if (!p || p.v === null || p.v === undefined) return { v: null };
           return Object.assign({}, p, {
-            v: Math.round(((p.v - mini) / etendue) * 1000) / 10,
+            // À deux, on trace les vraies valeurs ; au-delà, chaque courbe est
+            // ramenée à sa propre échelle, faute de place pour plus de deux axes.
+            v: deuxAxes ? p.v : Math.round(((p.v - mini) / etendue) * 1000) / 10,
             affiche: formatMesure(p.v, m),
           });
         }),
@@ -4884,14 +4951,25 @@ function mesureCombinee(o) {
   });
   if (series.length < 2) return null;
 
-  return {
+  const resultat = {
     code: '__combine', libelle: 'Superposition', unite: '', type: 'ligne', legende: true,
-    aligne: ref.aligne, etiquettes: ref.etiquettes, ouvrir: ref.ouvrir, echelleRelative: true,
-    aide: 'Chaque mesure garde son échelle : le bas du graphique est sa plus faible valeur, ' +
-      'le haut sa plus forte. On compare les formes, pas les unités — les valeurs réelles ' +
-      's’affichent à la lecture.',
+    aligne: ref.aligne, etiquettes: ref.etiquettes, ouvrir: ref.ouvrir,
     series: series,
   };
+  if (deuxAxes) {
+    resultat.libelle = choisies[0].libelle + ' et ' + choisies[1].libelle;
+    resultat.axes = choisies.map(function (m) {
+      return { libelle: m.libelle, unite: m.unite || '' };
+    });
+    resultat.aide = 'Chaque mesure a son axe : ' + choisies[0].libelle + ' à gauche, ' +
+      choisies[1].libelle + ' à droite, chacune dans son unité.';
+  } else {
+    resultat.echelleRelative = true;
+    resultat.aide = 'Au-delà de deux mesures, chaque courbe est ramenée à sa propre échelle : ' +
+      'le bas du graphique est sa plus faible valeur, le haut sa plus forte. On compare les ' +
+      'formes ; les valeurs réelles s’affichent à la lecture.';
+  }
+  return resultat;
 }
 
 function contenuGrapheMesures(o) {
@@ -4919,7 +4997,8 @@ function contenuGrapheMesures(o) {
         o.id + '\', \'' + x.code + '\', this.value)">' +
         x.variantes.map(function (w) {
           return '<option value="' + esc(w.code) + '"' +
-            (w.code === v.varianteActive ? ' selected' : '') + '>' + esc(w.libelle) + '</option>';
+            (w.code === v.varianteActive ? ' selected' : '') + '>' +
+            esc(w.menu || w.libelle) + '</option>';
         }).join('') + '</select></span>';
     }).join('') + '</div>'
     : '';
@@ -5027,35 +5106,59 @@ function dessinMesure(m, cible) {
   const series = m.series.map(function (x, k) {
     return Object.assign({ couleur: COULEURS_SERIES[k % COULEURS_SERIES.length] }, x);
   });
-  const valeurs = [];
-  series.forEach(function (x) {
-    x.points.forEach(function (p) { if (p && p.v !== null && p.v !== undefined) valeurs.push(p.v); });
-  });
-  let mini = Math.min.apply(null, valeurs);
-  let maxi = Math.max.apply(null, valeurs);
-  const depuisZero = m.type === 'barres' && m.zero !== false;
-  if (depuisZero && mini >= 0) mini = 0;
-  let ech = graduations(mini, maxi, 4);
-  // La plus faible valeur doit rester visible au-dessus de l'axe.
-  if (!depuisZero && ech.bas >= mini - 0.0001 && ech.haut - ech.bas > 0 && mini > 0) {
-    ech = graduations(Math.max(0, mini - ech.pas / 2), maxi, 4);
-  }
-  const y = function (v) { return basAxe - ((v - ech.bas) / (ech.haut - ech.bas || 1)) * (basAxe - 8); };
+  const echelleDe = function (liste) {
+    const valeurs = [];
+    liste.forEach(function (x) {
+      x.points.forEach(function (p) { if (p && p.v !== null && p.v !== undefined) valeurs.push(p.v); });
+    });
+    if (!valeurs.length) valeurs.push(0, 1);
+    let mini = Math.min.apply(null, valeurs);
+    const maxi = Math.max.apply(null, valeurs);
+    const depuisZero = m.type === 'barres' && m.zero !== false;
+    if (depuisZero && mini >= 0) mini = 0;
+    let e = graduations(mini, maxi, 4);
+    // La plus faible valeur doit rester visible au-dessus de l'axe.
+    if (!depuisZero && e.bas >= mini - 0.0001 && e.haut - e.bas > 0 && mini > 0) {
+      e = graduations(Math.max(0, mini - e.pas / 2), maxi, 4);
+    }
+    return e;
+  };
+
+  // Deux mesures superposées : un axe vertical chacune, gauche et droite.
+  const axes = (m.axes && m.axes.length === 2)
+    ? m.axes.map(function (a, i) {
+      const groupe = series.filter(function (x) { return (x.axe || 0) === i; });
+      return Object.assign({}, a, {
+        ech: echelleDe(groupe),
+        couleur: (groupe[0] || series[0]).couleur,
+      });
+    })
+    : [{ ech: echelleDe(series) }];
+  const double = axes.length === 2;
+  // De la place à droite pour le second jeu de graduations.
+  const D = double ? L - 28 : L;
+  const yAxe = function (i) {
+    const e = (axes[i] || axes[0]).ech;
+    return function (v) { return basAxe - ((v - e.bas) / (e.haut - e.bas || 1)) * (basAxe - 8); };
+  };
+  const ech = axes[0].ech;
+  const y = yAxe(0);
 
   const n = m.aligne
     ? Math.max.apply(null, series.map(function (x) { return x.points.length; }).concat([(m.etiquettes || []).length]))
     : 0;
-  const largeur = m.aligne ? (L - marge - 4) / Math.max(1, n) : 0;
+  const largeur = m.aligne ? (D - marge - 4) / Math.max(1, n) : 0;
   const centre = function (i) { return marge + i * largeur + largeur / 2; };
   const xSerie = function (x, i) {
     if (m.aligne) return centre(i);
     const len = x.points.length;
-    return len < 2 ? marge : marge + (i * (L - marge - 4)) / (len - 1);
+    return len < 2 ? marge : marge + (i * (D - marge - 4)) / (len - 1);
   };
 
   let dessin = '';
   const donnees = [];
   series.forEach(function (x, k) {
+    const y = double ? yAxe(x.axe || 0) : yAxe(0);
     const barres = m.type === 'barres' && (m.groupe || k === 0);
     if (barres) {
       const nb = m.groupe ? series.length : 1;
@@ -5072,7 +5175,7 @@ function dessinMesure(m, cible) {
     } else if (!m.aligne && x.points.filter(function (p) { return p && p.v !== null; }).length === 1) {
       // Une seule valeur (une séance face à un ensemble) : ligne de référence.
       const p = x.points.filter(function (q) { return q && q.v !== null; })[0];
-      dessin += '<line x1="' + marge + '" x2="' + L + '" y1="' + y(p.v).toFixed(1) + '" y2="' + y(p.v).toFixed(1) +
+      dessin += '<line x1="' + marge + '" x2="' + D + '" y1="' + y(p.v).toFixed(1) + '" y2="' + y(p.v).toFixed(1) +
         '" style="stroke:' + x.couleur + ';stroke-width:1.6;stroke-dasharray:5 3"/>';
     } else {
       let d = '';
@@ -5130,14 +5233,16 @@ function dessinMesure(m, cible) {
     const premier = ref.points[0] || {};
     const dernier = ref.points[ref.points.length - 1] || {};
     abscisses = '<text class="graduation" x="' + marge + '" y="' + (H + 1) + '">' + esc(premier.etiquette || '') + '</text>' +
-      '<text class="graduation" x="' + L + '" y="' + (H + 1) + '" text-anchor="end">' + esc(dernier.etiquette || '') + '</text>';
+      '<text class="graduation" x="' + D + '" y="' + (H + 1) + '" text-anchor="end">' + esc(dernier.etiquette || '') + '</text>';
   }
 
   const sens = m.sens === 'bas' ? ' <span class="muet">(plus bas = mieux)</span>'
     : m.sens === 'haut' ? ' <span class="muet">(plus haut = mieux)</span>' : '';
   const legende = series.length > 1 || m.legende
     ? '<div class="legende" style="margin-top:6px">' + series.map(function (x) {
-      return '<span><span class="pastille-c" style="background:' + x.couleur + '"></span>' + esc(x.nom) + '</span>';
+      return '<span><span class="pastille-c" style="background:' + x.couleur + '"></span>' +
+        esc(x.nom) + (double ? ' <span class="muet">' +
+        ((x.axe || 0) === 0 ? '← gauche' : 'droite →') + '</span>' : '') + '</span>';
     }).join('') + '</div>'
     : '';
   const geste = surOrdinateur() ? 'Survolez' : 'Glissez le doigt sur';
@@ -5154,8 +5259,8 @@ function dessinMesure(m, cible) {
     (m.echelleRelative ? ' <span class="muet">(échelle relative)</span>' : m.unite ? ' (' + esc(m.unite) + ')' : '') +
     '</span>' + sens + '</div>' +
     '<svg class="courbe" viewBox="0 0 ' + L + ' ' + (H + 2) + '">' +
-    grilleY(ech, y, L, marge) + dessin +
-    '<line class="axe" x1="' + marge + '" y1="' + basAxe + '" x2="' + L + '" y2="' + basAxe + '"/>' + abscisses +
+    grilleY(ech, y, D, marge, double ? axes[0].couleur : '') + axeDroit(axes, yAxe, D) + dessin +
+    '<line class="axe" x1="' + marge + '" y1="' + basAxe + '" x2="' + D + '" y2="' + basAxe + '"/>' + abscisses +
     '<line class="curseur" x1="0" y1="6" x2="0" y2="' + basAxe + '" style="display:none"/>' +
     '</svg>' + legende +
     '<p class="muet" style="margin:6px 0 0;font-size:12px">' + consigne + '</p></div>';
@@ -5221,7 +5326,11 @@ function mesuresParties(profils, comparaison) {
   };
   const liste = [
     { code: 'moyenne', libelle: 'Moy./flèche', unite: 'pts', sens: 'haut' },
-    { code: 'score', cle: 'pct', libelle: 'Score %', unite: '%', sens: 'haut' },
+    { code: 'score', cle: 'pct', libelle: 'Score %', unite: '%', sens: 'haut',
+      variantes: [
+        { code: 'pct', libelle: 'Score %', menu: 'En % du maximum', cle: 'pct', unite: '%' },
+        { code: 'points', libelle: 'Score', menu: 'En points', cle: 'score', unite: 'pts' },
+      ] },
     { code: 'centrage', cle: 'ecartCentre', libelle: 'Centrage', unite: 'cm', sens: 'bas',
       aide: 'Distance entre le centre du groupe de flèches et le centre du blason.' },
     { code: 'perimetre', libelle: 'Périmètre', unite: 'cm', sens: 'bas',
@@ -5411,12 +5520,27 @@ function graduations(min, max, nombre) {
 }
 
 /** Grille horizontale + étiquettes de l'axe vertical. */
-function grilleY(ech, y, L, marge) {
+/**
+ * Second axe vertical, à droite, quand deux mesures sont superposées : ses
+ * graduations portent l'unité de sa mesure et prennent sa couleur, pour qu'on
+ * sache d'un coup d'œil quelle courbe se lit sur quel axe.
+ */
+function axeDroit(axes, yAxe, D) {
+  if (axes.length !== 2) return '';
+  const y = yAxe(1);
+  return axes[1].ech.valeurs.map(function (v) {
+    return '<text class="graduation" x="' + (D + 4) + '" y="' + (y(v) - 1.5).toFixed(1) +
+      '" style="fill:' + axes[1].couleur + '">' + v + '</text>';
+  }).join('');
+}
+
+function grilleY(ech, y, L, marge, couleur) {
+  const teinte = couleur ? ' style="fill:' + couleur + '"' : '';
   return ech.valeurs.map(function (v) {
     const py = y(v);
     return '<line class="grille" x1="' + marge + '" y1="' + py.toFixed(1) +
       '" x2="' + L + '" y2="' + py.toFixed(1) + '"/>' +
-      '<text class="graduation" x="0" y="' + (py - 1.5).toFixed(1) + '">' + v + '</text>';
+      '<text class="graduation" x="0" y="' + (py - 1.5).toFixed(1) + '"' + teinte + '>' + v + '</text>';
   }).join('');
 }
 
@@ -6150,18 +6274,46 @@ function annoncerCouleurs() {
 const ORIGINE_ACCUEIL = /^https:\/\/([a-z0-9-]+\.)*github\.io$|^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 let attenteJeton = null;
 
-function appliquerMarges(haut, bas) {
+function appliquerMarges(m) {
   const r = document.documentElement.style;
-  const px = function (v) { return Math.max(0, Math.min(120, Number(v) || 0)) + 'px'; };
-  if (haut !== undefined && haut !== null) r.setProperty('--safe-haut', px(haut));
-  if (bas !== undefined && bas !== null) r.setProperty('--safe-bas', px(bas));
+  const borne = function (v) { return Math.max(0, Math.min(120, Math.round(Number(v) || 0))); };
+  etat.marges = {
+    haut: borne(m.haut), bas: borne(m.bas),
+    mesureHaut: borne(m.mesureHaut), mesureBas: borne(m.mesureBas),
+    regleHaut: m.regleHaut === null || m.regleHaut === undefined ? null : borne(m.regleHaut),
+    regleBas: m.regleBas === null || m.regleBas === undefined ? null : borne(m.regleBas),
+  };
+  r.setProperty('--safe-haut', etat.marges.haut + 'px');
+  r.setProperty('--safe-bas', etat.marges.bas + 'px');
   if (typeof majHauteurEntete === 'function') majHauteurEntete();
+  // Accusé de réception : la page d'accueil cesse alors de répéter.
+  versPageAccueil({ type: 'margesRecues' });
+  // Le réglage est peut-être ouvert : il doit suivre.
+  const bloc = document.getElementById('reglageMarges');
+  if (bloc) bloc.innerHTML = contenuMarges();
+}
+
+/** Envoie un réglage manuel à la page d'accueil (null = automatique). */
+function reglerMarges(haut, bas) {
+  if (!versPageAccueil({ type: 'reglageMarges', haut: haut, bas: bas })) {
+    notifier('Ce réglage n’est possible qu’en ouvrant l’application depuis le raccourci du club.', true);
+  }
+}
+
+function reglerMarge(cote, valeur) {
+  const m = etat.marges || {};
+  const courant = function (c) {
+    const r = c === 'haut' ? m.regleHaut : m.regleBas;
+    return r === undefined ? null : r;
+  };
+  reglerMarges(cote === 'haut' ? valeur : courant('haut'),
+    cote === 'bas' ? valeur : courant('bas'));
 }
 
 window.addEventListener('message', function (e) {
   const m = e.data;
   if (!m || m.arc !== true || !ORIGINE_ACCUEIL.test(e.origin)) return;
-  if (m.type === 'marges') appliquerMarges(m.haut, m.bas);
+  if (m.type === 'marges') appliquerMarges(m);
   else if (m.type === 'jeton' && attenteJeton) attenteJeton(m.valeur || null);
 });
 
@@ -6436,7 +6588,42 @@ function blocApparence() {
       return '<button type="button" class="nuance' + (t.couleur === c.code ? ' actif' : '') +
         '" onclick="choisirTheme(\'couleur\', \'' + c.code + '\')" aria-label="Couleur ' + esc(c.label) + '">' +
         '<span class="rond" style="background:' + esc(c.apercu) + '"></span>' + esc(c.label) + '</button>';
-    }).join('') + '</div></div>';
+    }).join('') + '</div></div>' + blocMarges();
+}
+
+/**
+ * Bords de l'écran. La page d'accueil mesure l'encoche et la barre d'accueil,
+ * mais certains téléphones ne les déclarent pas correctement : l'archer peut
+ * alors ajuster lui-même, et le réglage reste sur son appareil.
+ */
+function blocMarges() {
+  if (!etat.marges) return '';
+  return '<div id="reglageMarges">' + contenuMarges() + '</div>';
+}
+
+function contenuMarges() {
+  const m = etat.marges;
+  if (!m) return '';
+  const ligne = function (cote, titre, valeur, regle, mesure) {
+    return '<div class="curseur-choix" style="margin-bottom:6px">' +
+      '<label>' + titre + '</label>' +
+      '<div class="valeur-choix">' + valeur + ' px' +
+      (regle === null ? ' <span class="muet">(automatique)</span>' : ' <span class="muet">(réglé)</span>') +
+      '</div>' +
+      '<input type="range" min="0" max="80" step="1" value="' + valeur + '"' +
+      ' oninput="this.parentNode.querySelector(\'.valeur-choix\').textContent = this.value + \' px\'"' +
+      ' onchange="reglerMarge(\'' + cote + '\', Number(this.value))">' +
+      '<div class="bornes"><span>0</span><span>mesuré : ' + mesure + ' px</span></div></div>';
+  };
+  return '<div class="titre-section"><h2>Bords de l’écran</h2>' +
+    '<span class="muet">sur cet appareil</span></div><div class="carte">' +
+    ligne('haut', 'Sous l’heure du téléphone', m.haut, m.regleHaut, m.mesureHaut) +
+    ligne('bas', 'Au-dessus de la barre d’accueil', m.bas, m.regleBas, m.mesureBas) +
+    '<div class="actions" style="margin:6px 0 0">' +
+    '<button type="button" class="secondaire" onclick="reglerMarges(null, null)">' +
+    'Revenir au réglage automatique</button></div>' +
+    '<p class="muet" style="margin:10px 0 0">À ajuster si le titre passe sous l’heure du ' +
+    'téléphone, ou s’il reste une bande vide en bas de l’écran.</p></div>';
 }
 
 let minuteurTheme = null;
