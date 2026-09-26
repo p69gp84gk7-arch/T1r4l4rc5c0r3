@@ -126,6 +126,13 @@
       <div class="sous" id="enteteSous">Saison <?= saisonAffichee() ?></div>
     </div>
 
+    <!-- Sur téléphone, le profil se tient en haut à droite : la barre du bas
+         reste ainsi réservée à ce qu'on utilise pendant une séance. -->
+    <button type="button" class="profil-entete" id="btnProfilEntete" data-vue="Profil"
+            title="Mon profil" aria-label="Mon profil">
+      <svg viewBox="0 0 24 24"><use href="#ico-profil"/></svg>
+    </button>
+
     <nav class="onglets">
       <button data-vue="Accueil" class="actif">
         <svg viewBox="0 0 24 24"><use href="#ico-accueil"/></svg>Accueil

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>Arc Club Luchonnais</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 
   <!-- C'est cette page qu'iOS interroge pour l'icône du raccourci : elle doit
        donc déclarer elle-même l'apple-touch-icon, ce que la page de Google ne
@@ -20,12 +20,34 @@
   <meta name="theme-color" content="#15594a">
 
   <style>
-    html, body { margin: 0; height: 100%; background: #15594a; overflow: hidden; }
+    /*
+     * L'application tourne dans un cadre, et un cadre ne connaît pas les
+     * encoches ni la barre d'accueil du téléphone : c'est donc cette page qui
+     * réserve les marges. Le fond suit le thème pour qu'aucune bande de
+     * couleur n'apparaisse autour.
+     */
+    :root { color-scheme: light dark; --bord: #f4f3ef; --haut: #15594a; --bas: #ffffff; }
+    @media (prefers-color-scheme: dark) { :root { --bord: #0d1311; --bas: #151d1a; } }
 
-    /* Le cadre occupe tout l'écran et reçoit seul les appuis. */
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    /* Le bas de l'écran prolonge la barre d'onglets de l'application. */
+    body { background: var(--bas); }
+    /* Le haut prolonge l'entête coloré : plus de bande ni de titre flouté
+       sous l'heure du téléphone. */
+    .bord-haut {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 2;
+      height: env(safe-area-inset-top, 0px); background: var(--haut);
+    }
+    body {
+      padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+               env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+      box-sizing: border-box;
+    }
+
+    /* Le cadre occupe tout l'espace restant et reçoit seul les appuis. */
     iframe {
       border: 0; width: 100%; height: 100%; display: block;
-      background: #f4f3ef; position: relative; z-index: 1;
+      background: var(--bord); position: relative; z-index: 1;
     }
 
     /* Filet de sécurité : masqué tant que l'application se charge normalement,
@@ -60,6 +82,8 @@
 </head>
 <body>
   <iframe id="app" title="Espace archers" allow="clipboard-write"></iframe>
+
+  <div class="bord-haut"></div>
 
   <div class="notifs" id="notifs">
     <p>Être prévenu des nouveaux messages du club sur ce téléphone ?</p>
@@ -140,7 +164,12 @@
     window.addEventListener('message', function (e) {
       var m = e.data;
       if (!m || m.arc !== true || !sourceFiable(e.origin)) return;
-      if (m.type === 'pastille') {
+      if (m.type === 'couleurs') {
+        // L'application connaît le thème choisi par l'archer : on s'y accorde.
+        if (m.haut) document.documentElement.style.setProperty('--haut', m.haut);
+        if (m.bas) document.documentElement.style.setProperty('--bas', m.bas);
+        if (m.bas) document.documentElement.style.setProperty('--bord', m.bas);
+      } else if (m.type === 'pastille') {
         posterPastille(Number(m.nombre) || 0);
         proposerNotifications();
       } else if (m.type === 'notification') {

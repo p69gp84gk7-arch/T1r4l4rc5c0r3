@@ -127,15 +127,28 @@ Le dossier contient une page d’accueil (`index.html`, `manifest.json`, `icone/
 publiée par **GitHub Pages** :
 <https://p69gp84gk7-arch.github.io/T1r4l4rc5c0r3/>
 
-Elle ouvre l’application dans un cadre plein écran. Deux avantages :
+Elle ouvre l’application dans un cadre plein écran. Ses avantages :
 
 - **l’icône du club** au lieu de l’icône Google quand l’archer ajoute le raccourci à son
   écran d’accueil (*Partager ▸ Sur l’écran d’accueil*) ;
 - **le bandeau « Cette application a été créée par un utilisateur de Google Apps
-  Script » disparaît**.
+  Script » disparaît** ;
+- **les bords de l’écran s’accordent au thème** : un cadre ne connaît ni l’encoche ni la
+  barre d’accueil du téléphone, c’est donc la page qui réserve ces marges et les peint
+  aux couleurs choisies par l’archer (l’application les lui transmet) ;
+- **plus de zoom involontaire** au lancement du raccourci ;
+- c’est elle, enfin, qui porte la **pastille** et les **notifications** (voir plus bas).
 
 L’adresse Apps Script continue de fonctionner : c’est la même application, le même
 compte, les mêmes données. Un lien d’accès direct (`?cle=…`) traverse la page d’accueil.
+
+### Se déplacer dans l’application
+
+- **Sur téléphone** : barre du bas à cinq onglets — *Accueil, Score, Progression,
+  Calendrier, Messages* — volontairement large pour être touchée sans viser. **Profil**
+  se tient en haut à droite de l’entête, et **Inscrits** (encadrement) s’ouvre depuis le
+  bouton *Gérer les inscrits* de l’accueil.
+- **Sur ordinateur** : tous les onglets passent dans le bandeau supérieur.
 
 ### Saisie d’une partie
 
@@ -372,6 +385,10 @@ extérieur, qu’Apps Script ne sait pas faire signer.
 
 L’**email** reste donc le seul canal qui atteint à coup sûr un archer dont
 l’application est fermée — et il arrive, lui aussi, comme une notification.
+
+**Chaque archer peut écrire à tout le club ou à un archer en particulier** : le choix du
+destinataire est proposé au-dessus du message. Un message privé n’est visible que de son
+auteur et de son destinataire.
 
 Réglage dans l’onglet **Paramètres**, ligne « Notifications messages » :
 

@@ -64,13 +64,14 @@ function apiMessages(jeton, limite) {
     messages: messages,
     moi: ctx.id,
     estEncadrant: ctx.estEncadrant,
-    destinataires: ctx.estEncadrant
-      ? readTable_(SHEETS.ADHERENTS)
-          .filter(function (r) { return String(r['Statut'] || 'Actif') !== 'Inactif'; })
-          .map(function (r) {
-            return { id: String(r['ID']), nom: r['Prénom'] + ' ' + r['Nom'] };
-          })
-      : [],
+    // Chaque archer peut écrire à un autre archer en particulier.
+    destinataires: readTable_(SHEETS.ADHERENTS)
+      .filter(function (r) {
+        return String(r['Statut'] || 'Actif') !== 'Inactif' && String(r['ID']) !== ctx.id;
+      })
+      .map(function (r) {
+        return { id: String(r['ID']), nom: r['Prénom'] + ' ' + r['Nom'] };
+      }),
   };
 }
 
@@ -105,8 +106,9 @@ function apiEnvoyerMessage(jeton, texte, destinataire) {
   }
 
   const cible = String(destinataire || '').trim();
-  if (cible && !ctx.estEncadrant) {
-    return { ok: false, message: 'Seul l’encadrement peut écrire à un archer en particulier.' };
+  if (cible) {
+    if (cible === ctx.id) return { ok: false, message: 'Vous ne pouvez pas vous écrire à vous-même.' };
+    if (!trouverAdherentParId_(cible)) return { ok: false, message: 'Archer introuvable.' };
   }
 
   const ligne = {

@@ -76,6 +76,7 @@ function appliquerTheme(theme) {
   if (t.couleur && t.couleur !== 'sapin') racine.dataset.couleur = t.couleur;
   else delete racine.dataset.couleur;
   try { localStorage.setItem('arc.theme', JSON.stringify({ mode: t.mode, couleur: t.couleur })); } catch (e) {}
+  annoncerCouleurs();
 }
 
 // Dernier thème de cet appareil, en attendant celui du compte.
@@ -343,8 +344,10 @@ function appliquerDemarrage(d, depuisCache) {
 
     // L'annuaire reste à l'encadrement ; les scores du club sont consultables
     // par tous quand le paramètre « Scores visibles par tous » est à OUI.
+    // Par classe, pas en style direct : la barre du bas masque déjà cet onglet
+    // sur téléphone, et un style direct passerait devant.
     const ongletInscrits = document.querySelector('nav.onglets button[data-vue="Inscrits"]');
-    if (ongletInscrits) ongletInscrits.style.display = d.estEncadrant ? '' : 'none';
+    if (ongletInscrits) ongletInscrits.classList.toggle('reserve', !d.estEncadrant);
     document.getElementById('ongletComparer').style.display = '';
     document.getElementById('typeSaisie').style.display = etat.saisitPourAutres ? '' : 'none';
     document.getElementById('porteeScores').style.display = etat.voitScores ? '' : 'none';
@@ -386,7 +389,9 @@ function appliquerDemarrage(d, depuisCache) {
 
 /* ---------- Navigation ---------- */
 
-Array.prototype.forEach.call(document.querySelectorAll('nav.onglets button'), function (b) {
+// Le bouton Profil de l'entête ouvre le même onglet que la barre du bas.
+Array.prototype.forEach.call(
+  document.querySelectorAll('nav.onglets button, header.app button[data-vue]'), function (b) {
   b.addEventListener('click', function () {
     // Une séance commencée retient l'archer sur l'onglet Score : la quitter
     // abandonne les flèches saisies, et cela se confirme.
@@ -413,7 +418,7 @@ Array.prototype.forEach.call(document.querySelectorAll('nav.onglets button'), fu
 function afficherVue(b) {
   const vue = b.dataset.vue;
   Array.prototype.forEach.call(document.querySelectorAll('nav.onglets button'), function (x) {
-    x.classList.toggle('actif', x === b);
+    x.classList.toggle('actif', x.dataset.vue === vue);
   });
   Array.prototype.forEach.call(document.querySelectorAll('.vue'), function (v) {
     v.classList.toggle('active', v.id === 'vue' + vue);
@@ -436,6 +441,7 @@ function allerA(vue) {
   const b = document.querySelector('nav.onglets button[data-vue="' + vue + '"]');
   if (b) b.click();
 }
+
 
 /* ---------- Accueil ---------- */
 
@@ -471,6 +477,11 @@ function rendreAccueil(d) {
   if (d.stats) {
     html += '<div class="titre-section"><h2>Le club</h2>' +
       '<span class="muet">saison ' + esc(d.saison) + '</span></div>';
+    if (d.estEncadrant) {
+      html += '<div class="actions" style="margin:0 0 12px">' +
+        '<button type="button" class="principal" onclick="allerA(\'Inscrits\')">' +
+        '👥 Gérer les inscrits</button></div>';
+    }
     html += '<div class="grille-3">' +
       stat(d.stats.total, 'Inscrits') +
       stat(d.stats.jeunes, 'Jeunes') +
@@ -5757,12 +5768,11 @@ function chargerMessages() {
     }
     document.getElementById('formMessage').style.display = '';
 
-    if (r.estEncadrant) {
-      document.getElementById('champDestinataire').style.display = '';
-      remplirSelect('messageDestinataire', (r.destinataires || []).map(function (d) {
-        return { valeur: d.id, libelle: d.nom };
-      }), '', 'Tout le club');
-    }
+    // Tout le monde peut écrire au club ou à un archer en particulier.
+    document.getElementById('champDestinataire').style.display = (r.destinataires || []).length ? '' : 'none';
+    remplirSelect('messageDestinataire', (r.destinataires || []).map(function (d) {
+      return { valeur: d.id, libelle: d.nom };
+    }), '', 'Tout le club');
 
     etat.messagesNonLus = 0;
     majBadgeMessages(0);
@@ -5795,7 +5805,7 @@ document.getElementById('formMessage').addEventListener('submit', function (e) {
   if (!texte.trim()) return;
 
   btn.disabled = true;
-  api('apiEnvoyerMessage', texte, etat.estEncadrant && dest ? dest.value : '')
+  api('apiEnvoyerMessage', texte, dest ? dest.value : '')
     .then(function (r) {
       btn.disabled = false;
       if (!r.ok) { notifier(r.message, true); return; }
@@ -5839,6 +5849,22 @@ function versPageAccueil(message) {
   } catch (e) {
     return false;
   }
+}
+
+/**
+ * Couleurs du thème transmises à la page d'accueil : elle peint les bords de
+ * l'écran (sous l'heure, au-dessus de la barre d'accueil) de la même teinte,
+ * pour que rien ne dépasse autour du cadre.
+ */
+function annoncerCouleurs() {
+  try {
+    const st = getComputedStyle(document.documentElement);
+    versPageAccueil({
+      type: 'couleurs',
+      haut: st.getPropertyValue('--accent').trim(),
+      bas: st.getPropertyValue('--carte').trim(),
+    });
+  } catch (e) { /* sans conséquence */ }
 }
 
 /** Pastille sur l'icône : nombre de messages non lus. */
