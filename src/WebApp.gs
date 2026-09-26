@@ -52,6 +52,10 @@ function doGet(e) {
   gabarit.jetonInitial = '<script>window.JETON_INITIAL = ' + JSON.stringify(cle) + ';</script>';
 
   const page = gabarit.evaluate()
+    // Autorise l'affichage dans un cadre : c'est ce qui permet à la page
+    // d'accueil du club (icône du raccourci, plein écran, sans le bandeau
+    // « application créée par un utilisateur ») d'ouvrir l'application.
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .setTitle(nomClub() + ' — Espace archers')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
     .addMetaTag('apple-mobile-web-app-capable', 'yes')
