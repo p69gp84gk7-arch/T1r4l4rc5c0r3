@@ -16,7 +16,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Arc Club">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Barre d'état OPAQUE, et non « black-translucent » : sur iOS 26, une barre
+       translucide fait glisser la page sous l'heure (titre flouté) tout en
+       comptant sa hauteur comme si elle n'y était pas, ce qui laisse une bande
+       vide en bas de l'écran (bug WebKit 301108). Opaque, la barre reste noire
+       au-dessus de la page et la page va jusqu'au bas de l'écran. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="theme-color" content="#15594a">
 
   <style>
@@ -30,7 +35,7 @@
     :root { color-scheme: light dark; --bord: #f4f3ef; --haut: #15594a; --bas: #f4f3ef; }
     @media (prefers-color-scheme: dark) { :root { --bord: #0d1311; --bas: #0d1311; } }
 
-    html, body { margin: 0; height: 100%; overflow: hidden; }
+    html, body { margin: 0; height: 100%; height: 100dvh; overflow: hidden; }
     /* Visible seulement le temps du chargement, derrière le cadre. */
     html { background: var(--bas); }
     body { background: var(--bas); }
@@ -127,7 +132,9 @@
        ------------------------------------------------------------------ */
     var sondeHaut = document.getElementById('sondeHaut');
     var sondeBas = document.getElementById('sondeBas');
-    var CLE_MARGES = 'arc.marges';
+    // Nouvelle clé : les réglages faits avec l'ancienne barre translucide
+    // n'ont plus de sens avec la barre opaque, on repart de la mesure.
+    var CLE_MARGES = 'arc.marges.2';
 
     function installee() {
       return window.navigator.standalone === true ||
@@ -135,17 +142,16 @@
     }
 
     /*
-     * Certains téléphones annoncent des marges nulles au lancement, le temps
-     * que l'écran s'installe, et quelques-uns ne les annoncent jamais. Depuis
-     * l'écran d'accueil, on se rabat alors sur la hauteur de l'écran, qui dit
-     * si l'appareil a une encoche ou une île.
+     * Depuis l'écran d'accueil, la barre d'état est opaque : l'heure est
+     * au-dessus de la page, jamais dessus — aucune marge à réserver en haut.
+     * En bas, la barre d'accueil des iPhone sans bouton recouvre la page ;
+     * certains iOS l'annoncent à zéro, on se rabat alors sur la hauteur de
+     * l'écran, qui dit si l'appareil a un bouton d'accueil ou non.
      */
     function replis() {
       if (!installee()) return { haut: 0, bas: 0 };
       var h = Math.max(window.screen.height || 0, window.screen.width || 0);
-      if (h >= 850) return { haut: 59, bas: 34 };   // île dynamique
-      if (h >= 812) return { haut: 47, bas: 34 };   // encoche
-      return { haut: 20, bas: 0 };                  // bouton d'accueil
+      return { haut: 0, bas: h >= 812 ? 34 : 0 };
     }
 
     function reglage() {
@@ -162,7 +168,9 @@
     function envoyerMarges(force) {
       if (!cadre.contentWindow) return;
       var secours = replis();
-      var mesureHaut = sondeHaut.offsetHeight || secours.haut;
+      // Barre d'état opaque : même si iOS annonçait une marge en haut, l'heure
+      // n'est pas sur la page.
+      var mesureHaut = installee() ? 0 : (sondeHaut.offsetHeight || secours.haut);
       var mesureBas = sondeBas.offsetHeight || secours.bas;
       var r = reglage();
       var msg = {

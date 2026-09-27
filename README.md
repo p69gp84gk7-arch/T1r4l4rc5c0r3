@@ -723,16 +723,16 @@ L’application détecte le format de l’écran et s’y adapte :
 
 - **téléphone** : une seule colonne, barre d’onglets en bas, cibles et graphiques
   à la largeur de l’écran ;
-- **marges de l’écran** (encoche, barre d’accueil) : un cadre ne peut pas les mesurer.
-  La **page d’accueil du club** les mesure et les transmet à l’application, qui étire
-  elle-même son en-tête sous l’heure du téléphone — assombri en dégradé pour détacher
-  l’heure et le réseau — et sa barre d’onglets jusqu’au bas de l’écran. Plus aucune
-  bande de couleur autour de l’image. La mesure est **répétée** tant que l’application
-  n’a pas accusé réception (certains téléphones n’annoncent rien au lancement), et si
-  l’appareil n’annonce jamais rien, la **hauteur de l’écran** sert de repli : île
-  dynamique, encoche, ou bouton d’accueil. En dernier recours, **Profil ▸ Bords de
-  l’écran** laisse l’archer ajuster lui-même le haut et le bas ; le réglage reste sur
-  son appareil et *Revenir au réglage automatique* le rend à la mesure ;
+- **marges de l’écran** (encoche, barre d’accueil) : depuis l’écran d’accueil de
+  l’iPhone, la **barre d’état est opaque** (noire, avec l’heure) et la page commence
+  juste en dessous. Une barre translucide aurait fait passer le titre sous l’heure, flouté,
+  et laissé une bande vide en bas de l’écran : c’est un défaut d’iOS 26 (bug WebKit
+  301108), qu’une barre opaque évite. En bas, la **page d’accueil du club** mesure la
+  barre d’accueil et la transmet à l’application, qui descend sa barre d’onglets jusqu’au
+  bord ; si l’iPhone n’annonce rien, la **hauteur de l’écran** sert de repli. En dernier
+  recours, **Profil ▸ Bords de l’écran** laisse l’archer ajuster lui-même ; le réglage
+  reste sur son appareil. **Après une mise à jour de ce réglage, le raccourci doit être
+  supprimé puis recréé** : iOS lit le style de la barre d’état à l’installation ;
 - **ordinateur ou tablette en paysage** (à partir de 900 px) : **les onglets passent
   dans le bandeau supérieur**, page plus large,
   cible et volées côte à côte dans le détail d’une séance, carte des impacts d’un
