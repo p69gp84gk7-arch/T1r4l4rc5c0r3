@@ -420,7 +420,7 @@ La date de dernière lecture est conservée par compte, dans l’onglet `Utilisa
 Deux guides en PDF, illustrés de captures de l’application, s’ouvrent depuis
 **Profil ▸ Guides d’utilisation** :
 
-- **Guide de l’archer** — installer l’application, se connecter, noter une partie,
+- **Guide de l’archer** — installer l’application (Android, iPhone, tablette, ordinateur), se connecter, noter une partie,
   mini-compétition, progression, statistiques, comparer, classement, calendrier,
   messages, profil, questions fréquentes. Visible de **tous** ;
 - **Guide des dirigeants** — rôles, accueil des dirigeants, inscrits et fiches, accès et
@@ -431,6 +431,15 @@ Deux guides en PDF, illustrés de captures de l’application, s’ouvrent depui
 Les fichiers sont publiés avec la page d’accueil (dossier `guides/`, GitHub Pages) : ils
 sont publics pour qui connaît leur adresse, et ne montrent que des archers fictifs. Pour
 les refaire après une évolution de l’application : `guides/source/README.md`.
+
+### Notifications sur tous les appareils (onglet *Profil*)
+
+**Profil ▸ 🔔 Notifications des messages** fonctionne sur Android, iPhone, tablette et
+ordinateur : la page d’accueil du club réaffiche son bandeau « Activer » (même après un
+« Plus tard »), ou, si l’autorisation a été refusée, l’application explique où la rétablir
+selon l’appareil (réglages Android, réglages iPhone, cadenas du navigateur). La barre d’état
+est noire sur Android comme sur iPhone, et le repli des bords d’écran ne s’applique qu’à
+l’iPhone : sur Android, la page s’arrête d’elle-même au-dessus de la barre de navigation.
 
 ### Apparence (onglet *Profil*)
 

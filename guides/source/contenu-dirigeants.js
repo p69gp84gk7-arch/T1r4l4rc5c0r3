@@ -13,7 +13,9 @@ module.exports = {
     '<p>Il décrit uniquement ce que l’encadrement et l’administration ont <strong>en plus</strong> des archers. ' +
     'Pour noter une partie, les statistiques ou les messages, reportez-vous au <strong>Guide de l’archer</strong>, ' +
     'disponible lui aussi dans <em>Profil ▸ Guides d’utilisation</em>.</p>' +
-    '<p style="margin:0">Les captures montrent des archers <strong>fictifs</strong> ; l’administratrice de l’exemple est Hélène ROUSSEL.</p>',
+    '<p style="margin:0">Les captures, prises sur un téléphone, montrent des archers <strong>fictifs</strong> ; ' +
+    'l’administratrice de l’exemple est Hélène ROUSSEL. Tout fonctionne de la même façon sur Android, iPhone, ' +
+    'tablette et ordinateur.</p>',
   sections: [
     {
       titre: 'Les rôles', resume: 'Qui peut faire quoi',
@@ -247,7 +249,12 @@ module.exports = {
         <p>Dans GitHub Desktop : <strong>Commit</strong> puis <strong>Push origin</strong>. La page est en ligne une à deux minutes plus tard.
           Les guides sont publiés au même endroit, dans le dossier <code>guides/</code>.</p>
         <h3>Après une mise à jour de la page d’accueil</h3>
-        <p>Demandez aux archers de supprimer puis recréer l’icône si l’affichage paraît décalé : le téléphone relit alors ses réglages.</p>` }],
+        <p>Demandez aux archers de supprimer puis réinstaller l’icône si l’affichage paraît décalé (Android comme iPhone) :
+          le téléphone relit alors ses réglages.</p>
+        <h3>Tester sur plusieurs appareils</h3>
+        <p>Après une mise à jour, vérifiez l’application sur au moins un <strong>Android</strong>, un <strong>iPhone</strong> et un
+          <strong>ordinateur</strong> : les bords d’écran, les notifications et l’installation ne se comportent pas tout à fait
+          de la même façon d’un système à l’autre.</p>` }],
     },
     {
       titre: 'Les guides dans l’application', resume: 'Où les archers les trouvent',
@@ -261,7 +268,8 @@ module.exports = {
           <p>Les fichiers sont publiés avec la page d’accueil du club. Ils ne contiennent que des exemples fictifs ;
             comme toute page publique, quelqu’un qui en connaît l’adresse peut les ouvrir.</p>
           <div class="astuce"><strong>Pour diffuser l’application</strong>Envoyez aux archers l’adresse de la page d’accueil du club
-            et le Guide de l’archer : le chapitre « Installer l’application » leur explique comment mettre l’icône sur leur téléphone.</div>` },
+            et le Guide de l’archer : le chapitre « Installer l’application » explique comment installer l’icône sur Android,
+            iPhone, tablette ou ordinateur.</div>` },
       ],
     },
   ],

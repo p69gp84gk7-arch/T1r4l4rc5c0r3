@@ -6318,6 +6318,7 @@ window.addEventListener('message', function (e) {
   if (!m || m.arc !== true || !ORIGINE_ACCUEIL.test(e.origin)) return;
   if (m.type === 'marges') appliquerMarges(m);
   else if (m.type === 'jeton' && attenteJeton) attenteJeton(m.valeur || null);
+  else if (m.type === 'etatNotifications') reponseNotifications(m.etat);
 });
 
 /** Demande à la page d'accueil la session qu'elle garde, s'il y en a une. */
@@ -6460,6 +6461,29 @@ function notificationsPossibles() {
     Notification.permission === 'default' && !surIphone();
 }
 
+/**
+ * Notifications : dans le cadre, c'est la page d'accueil du club qui détient
+ * l'autorisation ; on lui demande d'afficher son bandeau « Activer », et elle
+ * répond où en est l'appareil.
+ */
+function activerNotifications() {
+  if (window.top === window) { demanderNotifications(); return; }
+  if (!versPageAccueil({ type: 'notifications' })) { expliquerNotifications('indisponible'); return; }
+  // Pas de réponse : la page d'accueil n'est pas celle du club (adresse Google directe).
+  etat.attenteNotifs = setTimeout(function () { expliquerNotifications('installer'); }, 1500);
+}
+
+function reponseNotifications(etatNotifs) {
+  clearTimeout(etat.attenteNotifs);
+  if (etatNotifs === 'proposees') {
+    notifier('Touchez « Activer » dans le bandeau en haut de l’écran.');
+  } else if (etatNotifs === 'actives') {
+    notifier('Les notifications sont déjà activées sur cet appareil.');
+  } else {
+    expliquerNotifications(etatNotifs);
+  }
+}
+
 function demanderNotifications() {
   try {
     const demande = Notification.requestPermission();
@@ -6469,25 +6493,39 @@ function demanderNotifications() {
         notifier('Notifications activées sur cet appareil.');
         rendreProfil();
       } else {
-        expliquerNotifications();
+        expliquerNotifications(choix === 'denied' ? 'refusees' : 'indisponible');
       }
-    }, expliquerNotifications);
+    }, function () { expliquerNotifications('indisponible'); });
   } catch (e) {
     expliquerNotifications();
   }
 }
 
-function expliquerNotifications() {
-  modale('<h2>Notifications du téléphone</h2>' +
-    '<p>Elles ne s’activent pas ici, mais depuis le <strong>raccourci du club</strong> ' +
-    'installé sur l’écran d’accueil (adresse du club, Partager ▸ Sur l’écran d’accueil) : ' +
-    'à l’ouverture, un bandeau propose « Activer ». Elles arrivent tant que ' +
-    'l’application est ouverte ou en arrière-plan récent.</p>' +
+function expliquerNotifications(cas) {
+  const appareil = surIphone() ? 'iphone' : /Android/i.test(navigator.userAgent) ? 'android' : 'ordinateur';
+  const reautoriser = {
+    iphone: 'Réglages du téléphone ▸ <strong>Notifications</strong> ▸ <strong>Arc Club</strong> ▸ Autoriser.',
+    android: 'Touchez longuement l’icône du club ▸ <strong>Infos sur l’appli</strong> ▸ <strong>Notifications</strong> ▸ ' +
+      'Autoriser. Dans Chrome : menu <strong>⋮</strong> ▸ Paramètres ▸ Paramètres des sites ▸ Notifications.',
+    ordinateur: 'Cliquez sur le petit cadenas (ou l’icône de réglages) à gauche de l’adresse ▸ ' +
+      '<strong>Notifications</strong> ▸ Autoriser, puis rechargez la page.',
+  }[appareil];
+  let texte;
+  if (cas === 'refusees') {
+    texte = '<p>Les notifications ont été <strong>refusées</strong> sur cet appareil. Pour les rétablir :</p>' +
+      '<p class="muet">' + reautoriser + '</p>';
+  } else if (cas === 'installer') {
+    texte = '<p>Elles s’activent depuis l’<strong>icône du club installée sur l’écran d’accueil</strong> ' +
+      '(voir le Guide de l’archer, chapitre « Installer l’application »). Ouvrez l’application par cette ' +
+      'icône : un bandeau propose alors « Activer ».</p>';
+  } else {
+    texte = '<p>Ce navigateur n’affiche pas de notifications. Ouvrez l’application avec Chrome, Edge, ' +
+      'Firefox ou Safari à jour, de préférence par l’icône du club.</p>';
+  }
+  modale('<h2>Notifications du téléphone</h2>' + texte +
     '<div class="carte"><strong>Ce qui vous prévient aussi</strong>' +
     '<ul class="muet" style="margin:8px 0 0;padding-left:18px;line-height:1.7">' +
-    '<li><strong>Les emails</strong> : ils arrivent sur le téléphone comme une ' +
-    'notification, même application fermée. À activer dans l’onglet Paramètres du ' +
-    'classeur, ligne « Notifications messages ».</li>' +
+    '<li><strong>Les emails</strong>, si le club les a activés : ils arrivent même application fermée.</li>' +
     '<li>La fenêtre à l’ouverture de l’application et la pastille rouge sur ' +
     'l’onglet Messages.</li></ul></div>' +
     '<button class="principal" onclick="fermerModale()">Compris</button>');
@@ -6560,14 +6598,9 @@ function rendreProfil() {
     '" onclick="ouvrirChangementMotDePasse()">Changer mon mot de passe</button></div>';
   html += '<div class="actions"><button class="secondaire" onclick="creerLienDirect()">' +
     'Mon lien d’accès direct</button></div>';
-  if (notificationsPossibles()) {
-    html += '<div class="actions"><button class="secondaire" onclick="demanderNotifications()">' +
-      'Activer les notifications sur cet appareil</button></div>';
-  } else if (surIphone()) {
-    html += '<p class="muet" style="margin-top:14px">Sur iPhone, les notifications ' +
-      's’activent depuis le raccourci du club sur l’écran d’accueil : un bandeau le ' +
-      'propose à l’ouverture. ' +
-      '<button class="lien-discret" onclick="expliquerNotifications()">En savoir plus</button></p>';
+  if (window.top !== window || notificationsPossibles()) {
+    html += '<div class="actions"><button class="secondaire" onclick="activerNotifications()">' +
+      '🔔 Notifications des messages</button></div>';
   }
   html += '<div class="actions"><button class="danger" onclick="deconnecter()">' +
     '<svg viewBox="0 0 24 24" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px">' +
@@ -6651,13 +6684,14 @@ function contenuMarges() {
   };
   return '<div class="titre-section"><h2>Bords de l’écran</h2>' +
     '<span class="muet">sur cet appareil</span></div><div class="carte">' +
-    ligne('haut', 'Sous l’heure du téléphone', m.haut, m.regleHaut, m.mesureHaut) +
-    ligne('bas', 'Au-dessus de la barre d’accueil', m.bas, m.regleBas, m.mesureBas) +
+    ligne('haut', 'En haut (sous l’heure et la batterie)', m.haut, m.regleHaut, m.mesureHaut) +
+    ligne('bas', 'En bas (au-dessus de la barre de navigation)', m.bas, m.regleBas, m.mesureBas) +
     '<div class="actions" style="margin:6px 0 0">' +
     '<button type="button" class="secondaire" onclick="reglerMarges(null, null)">' +
     'Revenir au réglage automatique</button></div>' +
     '<p class="muet" style="margin:10px 0 0">À ajuster si le titre passe sous l’heure du ' +
-    'téléphone, ou s’il reste une bande vide en bas de l’écran.</p></div>';
+    'téléphone, si les onglets du bas sont cachés par la barre de navigation, ou s’il ' +
+    'reste une bande vide en bas de l’écran.</p></div>';
 }
 
 let minuteurTheme = null;
@@ -7175,8 +7209,9 @@ function creerLienDirect() {
       '<button class="secondaire" onclick="fermerModale()">Fermer</button></div>' +
       '<div class="carte" style="margin-top:14px"><strong>Le mettre sur l’écran d’accueil</strong>' +
       '<ol class="muet" style="margin:8px 0 0;padding-left:18px;line-height:1.7">' +
-      '<li>Copiez le lien, ouvrez-le dans Safari ou Chrome.</li>' +
-      '<li>Menu <em>Partager</em> ▸ <em>Sur l’écran d’accueil</em>.</li>' +
+      '<li>Copiez le lien et ouvrez-le dans le navigateur du téléphone.</li>' +
+      '<li>iPhone : <em>Partager</em> ▸ <em>Sur l’écran d’accueil</em>. Android : menu ' +
+      '<em>⋮</em> ▸ <em>Ajouter à l’écran d’accueil</em>. Ordinateur : ajoutez-le aux favoris.</li>' +
       '<li>Le raccourci ouvrira l’application sans rien saisir.</li>' +
       '</ol></div>' +
       '<p class="muet" style="margin-top:12px">Le lien reste valable un an, et cesse ' +

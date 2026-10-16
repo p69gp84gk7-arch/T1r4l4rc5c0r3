@@ -5,14 +5,17 @@ module.exports = {
   titre: 'Guide de l’archer',
   sur: 'Espace archers',
   accroche: 'Noter vos parties flèche par flèche, suivre vos progrès, répondre au calendrier ' +
-    'et échanger avec le club : tout se fait depuis votre téléphone, en quelques gestes.',
+    'et échanger avec le club : tout se fait depuis votre téléphone Android ou iPhone, votre tablette ' +
+    'ou votre ordinateur, en quelques gestes.',
   apercus: ['u04-accueil', 'u08-volee', 'u14-stats-superposer'],
   version: 'Octobre 2026',
   lecture: '<h3>Comment lire ce guide</h3>' +
     '<p>Chaque chapitre montre un écran de l’application et explique, pas à pas, ce qu’on y fait. ' +
     'Les noms des boutons sont écrits <span class="bouton">comme ceci</span>.</p>' +
-    '<p style="margin:0">Les captures montrent des <strong>archers fictifs</strong> (Camille FONTAINE, Marc DELAGE…) : ' +
-    'sur votre téléphone, vous verrez vos propres parties et les membres du club.</p>',
+    '<p>Les captures ont été prises sur un téléphone ; l’application est <strong>la même sur Android, iPhone, ' +
+    'tablette et ordinateur</strong> (sur grand écran, les onglets passent simplement en haut).</p>' +
+    '<p style="margin:0">Elles montrent des <strong>archers fictifs</strong> (Camille FONTAINE, Marc DELAGE…) : ' +
+    'chez vous, vous verrez vos propres parties et les membres du club.</p>',
   sections: [
     {
       titre: 'En bref', resume: 'Ce que l’application vous permet de faire et comment s’y déplacer',
@@ -38,30 +41,39 @@ module.exports = {
           Un message privé n’est lu que par son auteur et son destinataire.</div>` }],
     },
     {
-      titre: 'Installer l’application sur votre téléphone', resume: 'Un raccourci sur l’écran d’accueil, comme une vraie application',
-      intro: 'L’application s’ouvre dans le navigateur, mais elle est bien plus agréable installée sur l’écran ' +
-        'd’accueil : plein écran, icône du club, connexion mémorisée et notifications des messages.',
+      titre: 'Installer l’application', resume: 'Sur Android, iPhone, tablette ou ordinateur',
+      intro: 'L’application fonctionne sur <strong>tous les appareils</strong> : téléphone Android ou iPhone, tablette, ' +
+        'ordinateur. Elle s’ouvre dans le navigateur, mais elle est bien plus agréable <strong>installée</strong> : ' +
+        'plein écran, icône du club, connexion mémorisée et notifications des messages.',
       blocs: [{ html: `
-        <p>L’adresse du club est&nbsp;: <code>${ADRESSE}</code></p>
+        <p>L’adresse du club est&nbsp;: <code>${ADRESSE}</code>. Ouvrez-la, puis suivez la ligne de votre appareil :</p>
         <table>
-          <tr><th style="width:50%">Sur iPhone (Safari)</th><th>Sur Android (Chrome)</th></tr>
-          <tr><td><ol style="margin:0">
-            <li>Ouvrez l’adresse du club dans <strong>Safari</strong>.</li>
-            <li>Touchez le bouton <strong>Partager</strong> (le carré avec une flèche vers le haut).</li>
-            <li>Choisissez <strong>Sur l’écran d’accueil</strong>. Si l’option <em>Ouvrir comme app web</em> apparaît, laissez-la activée.</li>
-            <li>Touchez <strong>Ajouter</strong> : l’icône du club apparaît.</li></ol></td>
-          <td><ol style="margin:0">
-            <li>Ouvrez l’adresse du club dans <strong>Chrome</strong>.</li>
-            <li>Touchez le menu <strong>⋮</strong> en haut à droite.</li>
-            <li>Choisissez <strong>Ajouter à l’écran d’accueil</strong> (ou <em>Installer l’application</em>).</li>
-            <li>Confirmez : l’icône du club apparaît.</li></ol></td></tr>
+          <tr><th style="width:44mm">Appareil</th><th>Pour installer l’icône du club</th></tr>
+          <tr><td><strong>Android</strong><br><span style="color:#5f6f68">avec Chrome</span></td>
+            <td>Menu <strong>⋮</strong> (en haut à droite) ▸ <strong>Ajouter à l’écran d’accueil</strong>
+              ou <strong>Installer l’application</strong> ▸ <strong>Installer</strong>.
+              Chrome propose parfois lui-même un bandeau « Installer » en bas de l’écran.</td></tr>
+          <tr><td><strong>Android</strong><br><span style="color:#5f6f68">Samsung Internet</span></td>
+            <td>Menu <strong>≡</strong> (en bas à droite) ▸ <strong>Ajouter la page à</strong> ▸ <strong>Écran d’accueil</strong>.</td></tr>
+          <tr><td><strong>Android</strong><br><span style="color:#5f6f68">Firefox</span></td>
+            <td>Menu <strong>⋮</strong> ▸ <strong>Ajouter à l’écran d’accueil</strong> (ou <strong>Installer</strong>).</td></tr>
+          <tr><td><strong>iPhone, iPad</strong><br><span style="color:#5f6f68">Safari, Chrome ou Edge</span></td>
+            <td>Bouton <strong>Partager</strong> (le carré avec une flèche vers le haut) ▸ <strong>Sur l’écran d’accueil</strong> ▸
+              <strong>Ajouter</strong>. Si l’option <em>Ouvrir comme app web</em> apparaît, laissez-la activée.</td></tr>
+          <tr><td><strong>Ordinateur</strong><br><span style="color:#5f6f68">Chrome ou Edge</span></td>
+            <td>Icône <strong>Installer</strong> au bout de la barre d’adresse, ou menu ▸ <strong>Installer Arc Club</strong>
+              (Edge : <em>Applications ▸ Installer ce site en tant qu’application</em>).</td></tr>
+          <tr><td><strong>Ordinateur</strong><br><span style="color:#5f6f68">Safari (Mac), Firefox</span></td>
+            <td>Safari : menu <strong>Fichier ▸ Ajouter au Dock</strong>. Firefox : ajoutez l’adresse à vos <strong>favoris</strong>.</td></tr>
         </table>
+        <p>Les intitulés varient un peu selon les marques et les versions ; cherchez « écran d’accueil » ou « installer » dans
+          le menu du navigateur.</p>
         <div class="astuce"><strong>Ouvrez toujours l’application par son icône</strong>C’est elle qui garde votre
-          connexion (« Rester connecté »), règle l’affichage autour de l’encoche du téléphone et peut vous prévenir
-          des nouveaux messages. À la première ouverture, un bandeau propose d’<strong>activer les notifications</strong> :
-          touchez <span class="bouton">Activer</span>.</div>
+          connexion (« Rester connecté »), règle l’affichage aux bords de l’écran de votre téléphone et peut vous prévenir
+          des nouveaux messages. Un bandeau propose d’<strong>activer les notifications</strong> : touchez
+          <span class="bouton">Activer</span>, puis acceptez la demande du téléphone.</div>
         <div class="attention"><strong>Après une mise à jour annoncée par le club</strong>Si l’affichage paraît décalé,
-          supprimez l’icône et recréez-la : le téléphone relit alors les réglages d’affichage.</div>` }],
+          supprimez l’icône et réinstallez-la : le téléphone relit alors les réglages d’affichage.</div>` }],
     },
     {
       titre: 'Se connecter', resume: 'Identifiant, mot de passe, rester connecté',
@@ -303,9 +315,23 @@ module.exports = {
           <h3 style="margin-top:4mm">Quand arrive un message ?</h3>
           <ul>
             <li><strong>Application ouverte</strong> : en 30 secondes au plus, avec une pastille rouge sur l’onglet.</li>
-            <li><strong>Notification du téléphone</strong> et pastille sur l’icône : si vous les avez activées depuis le raccourci du club.</li>
+            <li><strong>Notification</strong> : si vous l’avez activée (voir ci-dessous), tant que l’application est ouverte ou
+              vient d’être mise en arrière-plan.</li>
             <li><strong>Par email</strong> : immédiatement, même application fermée, si le club a activé cette option.</li>
           </ul>` },
+        { titre: 'Activer les notifications', html: `
+          <p>Un bandeau <strong>« Être prévenu des nouveaux messages »</strong> apparaît en haut de l’écran : touchez
+            <span class="bouton">Activer</span> puis acceptez. Vous l’avez refusé ? <strong>Profil ▸ 🔔 Notifications des messages</strong>
+            le fait réapparaître, ou vous explique comment les rétablir sur votre appareil.</p>
+          <table>
+            <tr><th style="width:44mm">Appareil</th><th>Où elles fonctionnent</th></tr>
+            <tr><td><strong>Android</strong></td><td>Dans l’application installée comme dans Chrome, Samsung Internet ou Firefox.
+              Refusées par erreur : appui long sur l’icône du club ▸ <em>Infos sur l’appli</em> ▸ <em>Notifications</em>.</td></tr>
+            <tr><td><strong>iPhone, iPad</strong></td><td>Uniquement depuis l’<strong>icône installée</strong> sur l’écran d’accueil
+              (iOS 16.4 ou plus récent). Réglages ▸ <em>Notifications</em> ▸ <em>Arc Club</em> pour les gérer.</td></tr>
+            <tr><td><strong>Ordinateur</strong></td><td>Chrome, Edge, Firefox ou Safari, tant que l’application est ouverte.
+              Cadenas à gauche de l’adresse ▸ <em>Notifications</em> pour les rétablir.</td></tr>
+          </table>` },
       ],
     },
     {
@@ -328,13 +354,15 @@ module.exports = {
               <strong>déjà connectée</strong>, pratique sur un appareil où la connexion ne tient pas. Elle <strong>vaut mot de passe</strong> :
               ne la partagez pas. Elle reste valable un an et cesse de fonctionner dès que vous changez votre mot de passe —
               c’est aussi la solution en cas de téléphone perdu.</li>
-            <li><span class="bouton" style="background:#a8342a">Déconnexion</span> : sur un téléphone ou une tablette partagés.</li>
+            <li><span class="bouton clair">🔔 Notifications des messages</span> : les activer, ou savoir comment les rétablir sur votre appareil.</li>
+            <li><span class="bouton" style="background:#a8342a">Déconnexion</span> : sur un téléphone, une tablette ou un ordinateur partagés.</li>
           </ul>` },
         { images: [['u23-profil-bas', 'Bords de l’écran']], titre: 'Bords de l’écran', html: `
           <p>Cette rubrique n’apparaît que dans l’application ouverte <strong>depuis son icône</strong>. Elle indique la place réservée
-            sous l’heure du téléphone et au-dessus de la barre d’accueil, mesurée automatiquement.</p>
-          <p>Si un titre passe sous l’heure ou s’il reste une bande vide en bas de l’écran, glissez les curseurs.
-            <span class="bouton clair">Revenir au réglage automatique</span> annule vos réglages.</p>` },
+            en haut (sous l’heure et la batterie) et en bas (au-dessus de la barre de navigation ou de la barre d’accueil),
+            mesurée automatiquement selon votre téléphone.</p>
+          <p>Si un titre passe sous l’heure, si les onglets du bas sont cachés par la barre de navigation, ou s’il reste une bande
+            vide en bas de l’écran, glissez les curseurs. <span class="bouton clair">Revenir au réglage automatique</span> annule vos réglages.</p>` },
       ],
     },
     {
@@ -355,12 +383,15 @@ module.exports = {
           touchez-la dans la liste puis <strong>Modifier</strong>.</p>
         <h3>J’ai perdu ma connexion en pleine partie.</h3>
         <p>Continuez à noter : la partie est gardée sur le téléphone et mise de côté dès que le réseau revient. Rien n’est perdu.</p>
-        <h3>Le haut de l’application passe sous l’heure, ou il reste une bande vide en bas.</h3>
-        <p>Supprimez l’icône de l’écran d’accueil et recréez-la. Si le défaut persiste, réglez-le dans
+        <h3>Le haut passe sous l’heure, les onglets du bas sont cachés, ou il reste une bande vide.</h3>
+        <p>Supprimez l’icône de l’écran d’accueil et réinstallez-la. Si le défaut persiste, réglez-le dans
           <strong>Profil ▸ Bords de l’écran</strong>.</p>
         <h3>Je ne reçois pas de notification.</h3>
-        <p>Les notifications passent par l’icône du club : ouvrez l’application par elle et touchez <strong>Activer</strong>
-          dans le bandeau proposé. Sur iPhone, elles ne fonctionnent que depuis l’icône installée sur l’écran d’accueil.</p>
+        <p>Ouvrez <strong>Profil ▸ 🔔 Notifications des messages</strong> : l’application propose de les activer, ou vous dit
+          comment les rétablir sur votre appareil. Sur iPhone et iPad, elles ne fonctionnent que depuis l’icône installée.</p>
+        <h3>Je n’ai pas de smartphone.</h3>
+        <p>L’application s’utilise aussi sur tablette et sur ordinateur, à la même adresse. Un encadrant peut aussi noter
+          vos parties pour vous depuis son téléphone.</p>
         </div>` }],
     },
   ],
