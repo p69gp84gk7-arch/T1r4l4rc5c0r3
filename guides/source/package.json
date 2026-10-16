@@ -1,0 +1,6 @@
+{
+  "name": "guides-espace-archers",
+  "private": true,
+  "description": "Captures et PDF des guides d'utilisation",
+  "dependencies": { "puppeteer-core": "^23" }
+}

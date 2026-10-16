@@ -415,6 +415,23 @@ Un message privé ne prévient que son destinataire, et l’auteur n’est jamai
 
 La date de dernière lecture est conservée par compte, dans l’onglet `Utilisateurs`.
 
+### Guides d’utilisation (onglet *Profil*)
+
+Deux guides en PDF, illustrés de captures de l’application, s’ouvrent depuis
+**Profil ▸ Guides d’utilisation** :
+
+- **Guide de l’archer** — installer l’application, se connecter, noter une partie,
+  mini-compétition, progression, statistiques, comparer, classement, calendrier,
+  messages, profil, questions fréquentes. Visible de **tous** ;
+- **Guide des dirigeants** — rôles, accueil des dirigeants, inscrits et fiches, accès et
+  mots de passe, saisie pour les archers, récapitulatif du calendrier, paramètres de
+  l’application, classeur et menu 🏹, mise à jour. Visible de l’**encadrement** et des
+  **administrateurs**, qui voient donc les deux.
+
+Les fichiers sont publiés avec la page d’accueil (dossier `guides/`, GitHub Pages) : ils
+sont publics pour qui connaît leur adresse, et ne montrent que des archers fictifs. Pour
+les refaire après une évolution de l’application : `guides/source/README.md`.
+
 ### Apparence (onglet *Profil*)
 
 Chaque membre choisit son **mode** — *Auto* (suit le téléphone), *Clair* ou *Sombre* —
@@ -699,6 +716,8 @@ fichier à jour en début de saison.
 | `Index/Styles/JavaScript.html` | Interface mobile (sans dépendance externe) |
 | `Logo.html` | Logo du club intégré en base64 — rien à héberger |
 | `icone/` | Icône du raccourci (512, 192, 180 px) et sources du logo |
+| `guides/` | **Guide de l’archer** et **Guide des dirigeants** en PDF, publiés avec la page d’accueil |
+| `guides/source/` | Fabrication des guides : simulateur (code serveur sur un classeur fictif), captures, mise en page — voir son README |
 
 ---
 

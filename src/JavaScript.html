@@ -583,8 +583,9 @@ function carteAnalyse(s, moiId) {
 }
 
 function stat(valeur, libelle) {
-  return '<div class="stat"><div class="valeur">' + esc(valeur) + '</div>' +
-    '<div class="libelle">' + esc(libelle) + '</div></div>';
+  // « 265/300 » ne se coupe, si la place manque, qu'après la barre oblique.
+  return '<div class="stat"><div class="valeur">' + esc(valeur).replace(/\//g, '/<wbr>') + '</div>' +
+    '<div class="libelle">' + esc(libelle).replace(/\//g, '/<wbr>') + '</div></div>';
 }
 
 /* ---------- Inscrits ---------- */
@@ -6288,9 +6289,11 @@ function appliquerMarges(m) {
   if (typeof majHauteurEntete === 'function') majHauteurEntete();
   // Accusé de réception : la page d'accueil cesse alors de répéter.
   versPageAccueil({ type: 'margesRecues' });
-  // Le réglage est peut-être ouvert : il doit suivre.
+  // Le réglage doit suivre. Le profil est souvent dessiné avant que les marges
+  // n'arrivent : il faut alors le redessiner pour que le réglage y apparaisse.
   const bloc = document.getElementById('reglageMarges');
   if (bloc) bloc.innerHTML = contenuMarges();
+  else if (etat.moi && document.querySelector('#profilContenu h2')) rendreProfil();
 }
 
 /** Envoie un réglage manuel à la page d'accueil (null = automatique). */
@@ -6476,10 +6479,11 @@ function demanderNotifications() {
 
 function expliquerNotifications() {
   modale('<h2>Notifications du téléphone</h2>' +
-    '<p>Votre navigateur les refuse ici, et c’est normal : l’application est ' +
-    'affichée par Google dans un cadre, où Safari comme Chrome interdisent les ' +
-    'notifications système. Aucun réglage de l’application ne peut passer outre.</p>' +
-    '<div class="carte"><strong>Ce qui vous prévient quand même</strong>' +
+    '<p>Elles ne s’activent pas ici, mais depuis le <strong>raccourci du club</strong> ' +
+    'installé sur l’écran d’accueil (adresse du club, Partager ▸ Sur l’écran d’accueil) : ' +
+    'à l’ouverture, un bandeau propose « Activer ». Elles arrivent tant que ' +
+    'l’application est ouverte ou en arrière-plan récent.</p>' +
+    '<div class="carte"><strong>Ce qui vous prévient aussi</strong>' +
     '<ul class="muet" style="margin:8px 0 0;padding-left:18px;line-height:1.7">' +
     '<li><strong>Les emails</strong> : ils arrivent sur le téléphone comme une ' +
     'notification, même application fermée. À activer dans l’onglet Paramètres du ' +
@@ -6547,6 +6551,7 @@ function rendreProfil() {
     html += '<div class="actions" style="margin:0 0 12px"><button class="principal ligne-reglage" ' +
       'onclick="ouvrirParametresApp()"><span>Paramètres de l’app</span><span>›</span></button></div>';
   }
+  html += blocGuides();
   html += blocApparence();
   html += blocLicence(a);
   html += '<div class="actions"><button class="principal" onclick="ouvrirFormulaireInscrit(\'' + a.id + '\')">Modifier mes informations</button></div>';
@@ -6560,7 +6565,8 @@ function rendreProfil() {
       'Activer les notifications sur cet appareil</button></div>';
   } else if (surIphone()) {
     html += '<p class="muet" style="margin-top:14px">Sur iPhone, les notifications ' +
-      'système ne sont pas possibles dans une application Apps Script. ' +
+      's’activent depuis le raccourci du club sur l’écran d’accueil : un bandeau le ' +
+      'propose à l’ouverture. ' +
       '<button class="lien-discret" onclick="expliquerNotifications()">En savoir plus</button></p>';
   }
   html += '<div class="actions"><button class="danger" onclick="deconnecter()">' +
@@ -6569,6 +6575,34 @@ function rendreProfil() {
   html += '<p class="muet" style="text-align:center;margin-top:18px">' + esc(etat.role) + ' · ' + esc(a.id) + '</p>';
 
   document.getElementById('profilContenu').innerHTML = html;
+}
+
+/* ---------- Guides d'utilisation ---------- */
+
+/*
+ * Les guides en PDF sont publiés avec la page d'accueil du club (GitHub
+ * Pages). Chacun voit celui de son rôle ; l'encadrement et l'administration
+ * voient les deux. Les fichiers eux-mêmes restent publics, comme le reste de
+ * la page d'accueil : ils ne contiennent que des exemples fictifs.
+ */
+const URL_GUIDES = 'https://p69gp84gk7-arch.github.io/T1r4l4rc5c0r3/guides/';
+
+function blocGuides() {
+  const lien = function (fichier, titre, detail) {
+    return '<a class="ligne" style="text-decoration:none;color:inherit" target="_blank" rel="noopener" ' +
+      'href="' + URL_GUIDES + fichier + '"><div class="infos"><div class="nom">' + titre + '</div>' +
+      '<div class="detail">' + detail + '</div></div><span class="puce">PDF</span></a>';
+  };
+  return '<div class="titre-section"><h2>Guides d’utilisation</h2>' +
+    '<span class="muet">' + (etat.estEncadrant ? 'archers et encadrement' : 'pour bien démarrer') + '</span></div>' +
+    '<div class="carte">' +
+    lien('guide-archer.pdf', '📘 Guide de l’archer',
+      'Saisir ses parties, suivre sa progression, le calendrier, les messages') +
+    (etat.estEncadrant
+      ? lien('guide-dirigeants.pdf', '📗 Guide des dirigeants',
+        'Inscrits, accès et mots de passe, saisie pour les autres, réglages du club')
+      : '') +
+    '</div>';
 }
 
 /* ---------- Apparence : choix du membre ---------- */

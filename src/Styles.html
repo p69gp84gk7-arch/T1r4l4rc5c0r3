@@ -181,11 +181,13 @@
 
   .grille { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .grille-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  /* Une valeur longue (« 19,6 cm² ») ne doit jamais pousser sa colonne hors de la carte. */
+  .grille > *, .grille-3 > * { min-width: 0; }
   .stat {
     background: var(--carte); border: 1px solid var(--trait);
     border-radius: var(--rayon); padding: 13px;
   }
-  .stat .valeur { font-size: 23px; font-weight: 700; letter-spacing: -.025em; }
+  .stat .valeur { font-size: clamp(17px, 5.4vw, 23px); font-weight: 700; letter-spacing: -.025em; }
   .stat .libelle {
     font-size: 11px; color: var(--encre-doux);
     text-transform: uppercase; letter-spacing: .05em; margin-top: 2px;

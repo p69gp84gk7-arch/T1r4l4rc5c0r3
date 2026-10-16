@@ -1,0 +1,7 @@
+node_modules/
+captures/
+gs/
+app.html
+serveur.html
+apercu/
+*.png
